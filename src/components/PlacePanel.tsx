@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useMemo, useState, useEffect } from "react";
 import { Place, CATEGORIES, PRICE_SYMBOLS } from "@/lib/types";
 
 interface PlacePanelProps {
@@ -27,10 +28,40 @@ export default function PlacePanel({
   isFavorite,
   onToggleFavorite,
 }: PlacePanelProps) {
+  const [slideIdx, setSlideIdx] = useState(0);
+  // Reset slider whenever a new place is opened
+  useEffect(() => {
+    setSlideIdx(0);
+  }, [place?.id, place?.category]);
+
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
+  const slides = useMemo(() => {
+    if (!place) return [] as { src: string; label: string; unoptimized?: boolean }[];
+    const list: { src: string; label: string; unoptimized?: boolean }[] = [];
+    if (place.photoUrl) {
+      list.push({ src: place.photoUrl, label: "Photo", unoptimized: true });
+    }
+    // Try our local scraped image (written by scripts/enrich_places.py)
+    list.push({ src: `/images/places/${place.id}.jpg`, label: "Photo" });
+    // Street View via Static API
+    if (apiKey) {
+      const sv =
+        `https://maps.googleapis.com/maps/api/streetview?size=880x480` +
+        `&location=${place.lat},${place.lng}` +
+        `&fov=80&pitch=5&source=outdoor&key=${apiKey}`;
+      list.push({ src: sv, label: "Street View", unoptimized: true });
+    }
+    return list;
+  }, [place, apiKey]);
+
   if (!place) return null;
 
   const meta = CATEGORIES[place.category];
   const tagList = place.tags.split(",").map((t) => t.trim()).filter(Boolean);
+
+  const goPrev = () => setSlideIdx((i) => (i - 1 + slides.length) % slides.length);
+  const goNext = () => setSlideIdx((i) => (i + 1) % slides.length);
 
   return (
     <>
@@ -49,52 +80,100 @@ export default function PlacePanel({
           place ? "translate-x-0" : "translate-x-full"
         }`}
       >
-        {/* Header with image */}
-        <div
-          className="relative h-56 flex items-center justify-center overflow-hidden"
-          style={{
-            background: `linear-gradient(135deg, ${meta.colorLight}, ${meta.color})`,
-          }}
-        >
-          {place.photoUrl ? (
-            <Image
-              src={place.photoUrl}
-              alt={place.name}
-              width={440}
-              height={224}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              unoptimized
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-                (e.target as HTMLImageElement).parentElement!.classList.add("fallback-active");
-              }}
-            />
-          ) : (
-            <Image
-              src={`/images/places/${place.id}.jpg`}
-              alt={place.name}
-              width={440}
-              height={224}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = "none";
-                (e.target as HTMLImageElement).parentElement!.classList.add("fallback-active");
-              }}
-            />
+        {/* Header carousel: Photo → Street View */}
+        <div className="relative h-60 overflow-hidden bg-stone-100 dark:bg-stone-800 group">
+          {/* Gradient fallback behind the image */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `linear-gradient(160deg, #faf8f5 0%, ${meta.colorLight} 55%, ${meta.colorDark} 100%)`,
+            }}
+          />
+          {slides.map((slide, idx) => (
+            <div
+              key={idx}
+              className={`absolute inset-0 transition-opacity duration-300 ${
+                idx === slideIdx ? "opacity-100" : "opacity-0 pointer-events-none"
+              }`}
+            >
+              <Image
+                src={slide.src}
+                alt={`${place.name} – ${slide.label}`}
+                width={880}
+                height={480}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                unoptimized={slide.unoptimized}
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                  (e.target as HTMLImageElement).parentElement!.classList.add("fallback-active");
+                }}
+              />
+              <div className="absolute inset-0 hidden [.fallback-active>&]:flex flex-col items-center justify-center text-white pointer-events-none">
+                <span className="text-6xl drop-shadow-lg mb-2">{meta.emoji}</span>
+                <span className="font-[family-name:var(--font-playfair)] text-xl font-semibold drop-shadow-md text-center px-6">
+                  {place.name}
+                </span>
+                <span className="text-[0.65rem] uppercase tracking-[0.2em] mt-1 opacity-80">
+                  {place.district}
+                </span>
+              </div>
+            </div>
+          ))}
+
+          {/* Slide label */}
+          {slides.length > 1 && (
+            <span className="absolute bottom-3 left-3 z-10 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-sm text-white text-[0.6rem] font-medium uppercase tracking-wide">
+              {slides[slideIdx]?.label}
+            </span>
           )}
-          <span className="absolute text-7xl pointer-events-none hidden [.fallback-active>&]:block">
-            {meta.emoji}
-          </span>
+
+          {/* Carousel arrows */}
+          {slides.length > 1 && (
+            <>
+              <button
+                onClick={goPrev}
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white flex items-center justify-center transition-colors cursor-pointer z-10 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                aria-label="Previous"
+              >
+                ‹
+              </button>
+              <button
+                onClick={goNext}
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white flex items-center justify-center transition-colors cursor-pointer z-10 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                aria-label="Next"
+              >
+                ›
+              </button>
+            </>
+          )}
+
+          {/* Carousel dots */}
+          {slides.length > 1 && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+              {slides.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setSlideIdx(idx)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    idx === slideIdx ? "w-6 bg-white" : "w-1.5 bg-white/50"
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Gradient scrim so favorite/close buttons stay legible over any photo */}
+          <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-black/50 to-transparent pointer-events-none" />
 
           {/* Favorite */}
           <button
             onClick={onToggleFavorite}
-            className={`absolute top-3 left-3 w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer text-lg ${
+            className={`absolute top-3 left-3 w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm transition-all cursor-pointer text-lg z-10 ${
               isFavorite
                 ? "bg-amber-500 text-white shadow-[0_0_12px_rgba(245,158,11,0.5)]"
-                : "bg-black/40 hover:bg-amber-500/80 text-white/80 hover:text-white"
+                : "bg-black/40 hover:bg-amber-500/80 text-white/90 hover:text-white"
             }`}
             aria-label="Save to favorites"
           >
@@ -104,7 +183,7 @@ export default function PlacePanel({
           {/* Close */}
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 text-white flex items-center justify-center transition-colors cursor-pointer"
+            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 hover:bg-black/70 backdrop-blur-sm text-white flex items-center justify-center transition-colors cursor-pointer z-10"
             aria-label="Close"
           >
             ✕

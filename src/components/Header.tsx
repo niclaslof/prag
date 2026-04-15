@@ -8,6 +8,7 @@ interface HeaderProps {
   favoriteCount: number;
   isDark: boolean;
   onToggleDark: () => void;
+  onOpenMenu: () => void;
 }
 
 export default function Header({
@@ -16,40 +17,86 @@ export default function Header({
   favoriteCount,
   isDark,
   onToggleDark,
+  onOpenMenu,
 }: HeaderProps) {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-[#1c1917] text-[#faf8f5]">
-      <div className="flex items-center justify-between px-3 py-1.5 md:px-5 md:py-2">
-        {/* Logo */}
-        <h1 className="font-[family-name:var(--font-playfair)] text-base md:text-lg font-bold tracking-tight">
-          Prag <span className="text-[#b91c1c]">&bull;</span> <span className="text-[#b45309]">Praha</span>
-        </h1>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-ink/95 text-paper backdrop-blur-md border-b border-white/5">
+      <div className="flex items-center justify-between px-3 py-1.5 md:px-5 md:py-2 gap-3">
+        {/* Hamburger + Logo */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onOpenMenu}
+            className="w-8 h-8 rounded-lg hover:bg-white/10 flex flex-col items-center justify-center gap-[3px] cursor-pointer transition-colors"
+            aria-label="Open menu"
+          >
+            <span className="w-4 h-[1.5px] bg-paper rounded-full" />
+            <span className="w-4 h-[1.5px] bg-paper rounded-full" />
+            <span className="w-4 h-[1.5px] bg-paper rounded-full" />
+          </button>
+          <h1 className="font-[family-name:var(--font-playfair)] text-base md:text-lg font-semibold tracking-tight flex items-center gap-1.5">
+            <span>Walli</span>
+            <span className="text-accent-light italic">Prag</span>
+          </h1>
+        </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           {/* Category dots */}
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             {activeCategories.map((cat) => (
               <div
                 key={cat}
-                className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full"
+                className="w-1.5 h-1.5 rounded-full"
                 style={{ backgroundColor: CATEGORIES[cat].color }}
               />
             ))}
           </div>
           {/* Favorites */}
           {favoriteCount > 0 && (
-            <span className="text-[0.65rem] text-amber-400">♥{favoriteCount}</span>
+            <span className="text-[0.7rem] text-amber-400 font-medium">
+              ♥ {favoriteCount}
+            </span>
           )}
           {/* Count */}
-          <span className="text-[#b45309] text-sm md:text-base font-bold">{placeCount}</span>
+          <span className="text-[0.7rem] md:text-xs text-warm font-medium tabular-nums">
+            {placeCount} places
+          </span>
           {/* Dark toggle */}
           <button
             onClick={onToggleDark}
-            className="text-sm cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
+            className="relative w-11 h-6 rounded-full bg-stone-700/80 hover:bg-stone-600 border border-white/10 transition-colors cursor-pointer overflow-hidden shadow-inner"
             title={isDark ? "Light mode" : "Dark mode"}
+            aria-label="Toggle dark mode"
+            role="switch"
+            aria-checked={isDark}
           >
-            {isDark ? "☀️" : "🌙"}
+            {/* Star dust – visible in dark state */}
+            <span
+              className={`absolute inset-0 transition-opacity duration-500 ${
+                isDark ? "opacity-100" : "opacity-0"
+              }`}
+              aria-hidden
+            >
+              <span className="absolute top-1 left-1.5 w-0.5 h-0.5 rounded-full bg-white/80" />
+              <span className="absolute top-2.5 left-3 w-[1px] h-[1px] rounded-full bg-white/70" />
+              <span className="absolute top-1.5 left-4 w-[1px] h-[1px] rounded-full bg-white/60" />
+            </span>
+            {/* Knob */}
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full shadow-md transition-all duration-400 ease-out ${
+                isDark
+                  ? "translate-x-5 bg-gradient-to-br from-amber-200 to-amber-400"
+                  : "translate-x-0 bg-gradient-to-br from-white to-stone-200"
+              }`}
+              aria-hidden
+            >
+              {/* Moon crater – slides in when dark, out of view otherwise */}
+              <span
+                className={`absolute top-1 left-1 w-2.5 h-2.5 rounded-full bg-stone-800 transition-transform duration-500 ${
+                  isDark ? "translate-x-0" : "translate-x-4 opacity-0"
+                }`}
+              />
+            </span>
           </button>
         </div>
       </div>

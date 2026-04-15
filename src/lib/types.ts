@@ -54,6 +54,8 @@ export interface Place {
   /** Editorial highlight */
   isTopPick?: boolean;
   isNew?: boolean;
+  /** The user's home hotel – renders as an oversized star on the map. */
+  isHomeHotel?: boolean;
 }
 
 export type CategoryFilter = Category | "all";

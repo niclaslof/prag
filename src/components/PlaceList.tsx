@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Place, CATEGORIES, PRICE_SYMBOLS } from "@/lib/types";
 
 interface PlaceListProps {
@@ -56,15 +57,26 @@ export default function PlaceList({
                 fav ? "bg-amber-50" : ""
               }`}
             >
-              <span
-                className={`w-9 h-9 rounded-full text-white flex items-center justify-center text-base shrink-0 ${
+              <div
+                className={`relative w-11 h-11 rounded-lg overflow-hidden shrink-0 flex items-center justify-center text-white text-base ${
                   fav ? "ring-2 ring-amber-400" : ""
                 }`}
                 style={{ backgroundColor: meta.color }}
                 title={meta.name}
               >
-                {meta.emoji}
-              </span>
+                <span className="absolute">{meta.emoji}</span>
+                <Image
+                  src={place.photoUrl || `/images/places/${place.id}.jpg`}
+                  alt=""
+                  width={88}
+                  height={88}
+                  unoptimized={!!place.photoUrl}
+                  className="relative w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-xs text-ink truncate">
                   {place.name}

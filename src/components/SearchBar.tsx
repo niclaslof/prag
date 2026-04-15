@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Category,
   CATEGORIES,
@@ -30,6 +30,8 @@ interface SearchBarProps {
   openNowOnly: boolean;
   onToggleOpenNow: () => void;
   onClearFilters: () => void;
+  /** Increment to force the filters drawer open (used by the menu). */
+  forceOpenNonce?: number;
 }
 
 export default function SearchBar({
@@ -51,11 +53,18 @@ export default function SearchBar({
   openNowOnly,
   onToggleOpenNow,
   onClearFilters,
+  forceOpenNonce,
 }: SearchBarProps) {
   const [filtersOpen, setFiltersOpen] = useState(false);
 
+  useEffect(() => {
+    if (forceOpenNonce && forceOpenNonce > 0) {
+      setFiltersOpen(true);
+    }
+  }, [forceOpenNonce]);
+
   const pill =
-    "px-2 py-0.5 md:px-2.5 md:py-1 rounded-full text-[0.6rem] md:text-[0.65rem] font-semibold cursor-pointer whitespace-nowrap transition-all border";
+    "px-2.5 py-1 md:px-3 md:py-1 rounded-full text-[0.62rem] md:text-[0.68rem] font-medium cursor-pointer whitespace-nowrap transition-all border";
 
   const advancedCount =
     priceLevels.length +
@@ -64,17 +73,17 @@ export default function SearchBar({
     (openNowOnly ? 1 : 0);
 
   return (
-    <div className="fixed top-[36px] md:top-[40px] left-0 right-0 z-40">
+    <div className="fixed top-[38px] md:top-[42px] left-0 right-0 z-40">
       {/* Main bar */}
-      <div className="bg-white/95 dark:bg-stone-900/95 backdrop-blur-sm border-b border-stone-200 dark:border-stone-700 px-2 py-1 md:px-4 md:py-1.5">
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+      <div className="bg-paper/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800 px-2 py-1.5 md:px-4 md:py-2">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
           {/* Search */}
           <input
             type="text"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Search Prague..."
-            className="px-2 py-1 rounded-full border border-stone-300 dark:border-stone-600 text-[0.65rem] md:text-xs w-28 md:w-44 bg-white dark:bg-stone-800 dark:text-stone-100 outline-none focus:border-[#b45309] transition-colors shrink-0"
+            placeholder="Search Prague…"
+            className="px-3 py-1.5 rounded-full border border-stone-300 dark:border-stone-700 text-[0.68rem] md:text-xs w-32 md:w-52 bg-white dark:bg-stone-800 dark:text-stone-100 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all shrink-0 placeholder:text-stone-400"
           />
 
           {/* Favorites */}

@@ -1,7 +1,7 @@
 {
-  "name": "Konstrundan 2026 – Hela Skåne",
-  "short_name": "Konstrundan",
-  "description": "Interaktiv karta över 354 konstnärer i 5 regioner. Planera din Konstrunda!",
+  "name": "Walli Prag — Best of Prague",
+  "short_name": "Walli Prag",
+  "description": "Interactive map of Prague's best bars, restaurants, cafés, clubs and sights. Plan your trip with favorites and routes.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#faf8f5",

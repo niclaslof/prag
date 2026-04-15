@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { APIProvider } from "@vis.gl/react-google-maps";
 import Header from "@/components/Header";
 import SearchBar from "@/components/SearchBar";
 import MapComponent from "@/components/Map";
 import PlacePanel from "@/components/PlacePanel";
 import PlaceList from "@/components/PlaceList";
 import RoutePlanner from "@/components/RoutePlanner";
+import Menu from "@/components/Menu";
+import TransportPanel from "@/components/TransportPanel";
 import { allPlaces } from "@/data/places";
 import {
   Place,
@@ -29,7 +32,6 @@ const availableDistricts = DISTRICTS.filter((d) =>
 /** Returns true if place is open now based on local time (Europe/Prague). */
 function isOpenNow(place: Place): boolean {
   if (!place.hours || place.hours.length === 0) return true;
-  // Prague is UTC+1 (CET) or UTC+2 (CEST). Use browser local for simplicity.
   const now = new Date();
   const day = now.getDay();
   const minutes = now.getHours() * 60 + now.getMinutes();
@@ -45,13 +47,14 @@ function isOpenNow(place: Place): boolean {
   const openMin = toMin(today.open);
   const closeMin = toMin(today.close);
   if (closeMin <= openMin) {
-    // Spans midnight
     return minutes >= openMin || minutes <= closeMin;
   }
   return minutes >= openMin && minutes <= closeMin;
 }
 
 export default function Home() {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
   const [query, setQuery] = useState("");
   const [activeCategories, setActiveCategories] =
     useState<Category[]>(availableCategories);
@@ -63,6 +66,9 @@ export default function Home() {
   const [listOpen, setListOpen] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [routeOpen, setRouteOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [transportOpen, setTransportOpen] = useState(false);
+  const [focusFilters, setFocusFilters] = useState(0);
 
   const { favoriteCount, toggleFavorite, isFavorite } = useFavorites();
   const { isDark, toggle: toggleDark } = useDarkMode();
@@ -99,6 +105,8 @@ export default function Home() {
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
     return allPlaces.filter((p) => {
+      // Always keep the home hotel visible
+      if (p.isHomeHotel) return true;
       if (showFavoritesOnly && !isFavorite(p.category, p.id)) return false;
       if (!activeCategories.includes(p.category)) return false;
 
@@ -151,15 +159,17 @@ export default function Home() {
   ]);
 
   const favoritePlaces = allPlaces.filter((p) => isFavorite(p.category, p.id));
+  const homeHotel = allPlaces.find((p) => p.isHomeHotel);
 
   return (
-    <>
+    <APIProvider apiKey={apiKey}>
       <Header
         placeCount={filtered.length}
         activeCategories={activeCategories}
         favoriteCount={favoriteCount}
         isDark={isDark}
         onToggleDark={toggleDark}
+        onOpenMenu={() => setMenuOpen(true)}
       />
       <SearchBar
         query={query}
@@ -180,6 +190,7 @@ export default function Home() {
         openNowOnly={openNowOnly}
         onToggleOpenNow={() => setOpenNowOnly(!openNowOnly)}
         onClearFilters={handleClearFilters}
+        forceOpenNonce={focusFilters}
       />
 
       <MapComponent
@@ -219,23 +230,41 @@ export default function Home() {
         }}
       />
 
+      <Menu
+        isOpen={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onOpenList={() => setListOpen(true)}
+        onOpenTransport={() => setTransportOpen(true)}
+        onOpenRoute={() => setRouteOpen(true)}
+        onOpenFilters={() => setFocusFilters((n) => n + 1)}
+        placeCount={filtered.length}
+        favoriteCount={favoriteCount}
+        homeHotelName={homeHotel?.name}
+      />
+
+      <TransportPanel
+        isOpen={transportOpen}
+        onClose={() => setTransportOpen(false)}
+        homeHotel={homeHotel}
+      />
+
       {/* Bottom bar */}
-      <div className="fixed bottom-4 left-3 right-3 z-50 flex gap-2 justify-center pointer-events-none">
+      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex gap-2 pointer-events-none">
         <button
           onClick={() => setListOpen(!listOpen)}
-          className="pointer-events-auto px-4 py-2 rounded-full bg-ink/90 backdrop-blur-sm text-paper text-xs font-medium shadow-lg hover:bg-ink transition-colors cursor-pointer"
+          className="pointer-events-auto px-5 py-2.5 rounded-full bg-ink/95 backdrop-blur-md text-paper text-xs font-medium shadow-xl border border-white/10 hover:bg-ink transition-all cursor-pointer"
         >
-          List ({filtered.length})
+          List · {filtered.length}
         </button>
         {favoriteCount > 0 && (
           <button
             onClick={() => setRouteOpen(true)}
-            className="pointer-events-auto px-4 py-2 rounded-full bg-accent/90 backdrop-blur-sm text-paper text-xs font-medium shadow-lg hover:bg-accent transition-colors cursor-pointer"
+            className="pointer-events-auto px-5 py-2.5 rounded-full bg-accent/95 backdrop-blur-md text-paper text-xs font-medium shadow-xl border border-white/10 hover:bg-accent transition-all cursor-pointer"
           >
-            Itinerary ♥ {favoriteCount}
+            Itinerary · ♥ {favoriteCount}
           </button>
         )}
       </div>
-    </>
+    </APIProvider>
   );
 }

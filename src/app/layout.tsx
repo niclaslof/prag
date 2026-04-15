@@ -24,20 +24,23 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Prag — Best bars, restaurants & sights in Prague",
+  metadataBase: new URL("https://walliprag.vercel.app"),
+  title: "Walli Prag — Best bars, restaurants & sights in Prague",
   description:
     "Interactive map of Prague's best bars, restaurants, cafés, clubs and sights. Search, filter by price and rating, save favorites and plan your itinerary.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Prag",
+    title: "Walli Prag",
   },
   openGraph: {
-    title: "Prag — Best of Prague",
+    title: "Walli Prag — Best of Prague",
     description:
       "Discover Prague's best bars, restaurants, cafés and sights on an interactive map.",
     locale: "en_US",
+    url: "https://walliprag.vercel.app",
+    siteName: "Walli Prag",
   },
 };
 
