@@ -29,6 +29,8 @@ interface SearchBarProps {
   availableDistricts: District[];
   openNowOnly: boolean;
   onToggleOpenNow: () => void;
+  kidFriendlyOnly: boolean;
+  onToggleKidFriendly: () => void;
   onClearFilters: () => void;
   /** Increment to force the filters drawer open (used by the menu). */
   forceOpenNonce?: number;
@@ -52,6 +54,8 @@ export default function SearchBar({
   availableDistricts,
   openNowOnly,
   onToggleOpenNow,
+  kidFriendlyOnly,
+  onToggleKidFriendly,
   onClearFilters,
   forceOpenNonce,
 }: SearchBarProps) {
@@ -70,7 +74,8 @@ export default function SearchBar({
     priceLevels.length +
     (minRating > 0 ? 1 : 0) +
     activeDistricts.length +
-    (openNowOnly ? 1 : 0);
+    (openNowOnly ? 1 : 0) +
+    (kidFriendlyOnly ? 1 : 0);
 
   return (
     <div className="fixed top-[38px] md:top-[42px] left-0 right-0 z-40">
@@ -147,6 +152,16 @@ export default function SearchBar({
               }`}
             >
               🕐 Open now
+            </button>
+            <button
+              onClick={onToggleKidFriendly}
+              className={`${pill} ${
+                kidFriendlyOnly
+                  ? "bg-pink-500 border-pink-500 text-white"
+                  : "bg-white dark:bg-stone-800 border-stone-300 text-stone-500"
+              }`}
+            >
+              👶 Kid-friendly
             </button>
             <span className="text-[0.6rem] text-warm font-semibold uppercase ml-2">Min rating</span>
             {[0, 4, 4.3, 4.5, 4.7].map((r) => (

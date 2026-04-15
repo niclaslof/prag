@@ -11,6 +11,25 @@ interface MapProps {
   selectedPlace: Place | null;
   onSelectPlace: (place: Place) => void;
   isFavorite?: (category: string, placeId: number) => boolean;
+  directionsTarget?: Place | null;
+  directionsMode?: DirectionsMode;
+  onDirectionsResult?: (summary: DirectionsSummary | null) => void;
+}
+
+export type DirectionsMode = "walking" | "transit" | "driving" | "bicycling";
+
+export interface DirectionsSummary {
+  totalDuration: string;
+  totalDistance: string;
+  steps: {
+    instructions: string;
+    duration: string;
+    distance: string;
+    mode: string;
+    transitLine?: string;
+    transitVehicle?: string;
+  }[];
+  fare?: string;
 }
 
 function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite }: MapProps) {
@@ -236,13 +255,150 @@ function FindHomeButton({ home }: { home?: Place }) {
   return (
     <button
       onClick={goHome}
-      className="fixed bottom-20 right-3 z-10 pl-3 pr-3.5 py-2 rounded-full bg-amber-500 text-white shadow-[0_4px_20px_rgba(245,158,11,0.4)] border border-amber-300 flex items-center gap-1.5 cursor-pointer hover:bg-amber-600 hover:shadow-[0_4px_24px_rgba(245,158,11,0.5)] transition-all text-[0.68rem] font-semibold"
+      className="fixed right-3 z-10 pl-3 pr-3.5 py-2 rounded-full bg-amber-500 text-white shadow-[0_4px_20px_rgba(245,158,11,0.4)] border border-amber-300 flex items-center gap-1.5 cursor-pointer hover:bg-amber-600 hover:shadow-[0_4px_24px_rgba(245,158,11,0.5)] transition-all text-[0.68rem] font-semibold"
+      style={{ bottom: "calc(132px + env(safe-area-inset-bottom))" }}
       title={`Find ${home.name}`}
     >
       <span className="text-sm leading-none">★</span>
       Home
     </button>
   );
+}
+
+/* In-app directions renderer – draws a polyline from user's current location
+   (or Prague center as fallback) to the target place and reports a summary
+   up to the page. */
+function DirectionsLayer({
+  target,
+  mode,
+  onResult,
+}: {
+  target?: Place | null;
+  mode: DirectionsMode;
+  onResult?: (summary: DirectionsSummary | null) => void;
+}) {
+  const map = useMap();
+  const rendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const isDark = useIsDark();
+
+  useEffect(() => {
+    if (!map) return;
+    if (!target) {
+      // Clear
+      if (rendererRef.current) {
+        rendererRef.current.setMap(null);
+        rendererRef.current = null;
+      }
+      onResult?.(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const run = async () => {
+      try {
+        const { DirectionsService, DirectionsRenderer } =
+          (await google.maps.importLibrary("routes")) as google.maps.RoutesLibrary;
+        if (cancelled) return;
+
+        const service = new DirectionsService();
+        const polylineColor = isDark ? "#fbbf24" : "#b45309";
+
+        if (!rendererRef.current) {
+          rendererRef.current = new DirectionsRenderer({
+            map,
+            suppressMarkers: true,
+            preserveViewport: false,
+            polylineOptions: {
+              strokeColor: polylineColor,
+              strokeWeight: 5,
+              strokeOpacity: 0.85,
+            },
+          });
+        } else {
+          rendererRef.current.setMap(map);
+          rendererRef.current.setOptions({
+            polylineOptions: {
+              strokeColor: polylineColor,
+              strokeWeight: 5,
+              strokeOpacity: 0.85,
+            },
+          });
+        }
+
+        // Origin = user's geolocation if allowed, otherwise PRAGUE_CENTER
+        const getOrigin = () =>
+          new Promise<google.maps.LatLngLiteral>((resolve) => {
+            if (!navigator.geolocation) {
+              resolve(PRAGUE_CENTER);
+              return;
+            }
+            navigator.geolocation.getCurrentPosition(
+              (pos) =>
+                resolve({
+                  lat: pos.coords.latitude,
+                  lng: pos.coords.longitude,
+                }),
+              () => resolve(PRAGUE_CENTER),
+              { enableHighAccuracy: true, timeout: 5000, maximumAge: 10_000 }
+            );
+          });
+
+        const origin = await getOrigin();
+        if (cancelled) return;
+
+        const travelModeMap: Record<DirectionsMode, google.maps.TravelMode> = {
+          walking: google.maps.TravelMode.WALKING,
+          transit: google.maps.TravelMode.TRANSIT,
+          driving: google.maps.TravelMode.DRIVING,
+          bicycling: google.maps.TravelMode.BICYCLING,
+        };
+
+        const result = await service.route({
+          origin,
+          destination: { lat: target.lat, lng: target.lng },
+          travelMode: travelModeMap[mode],
+          ...(mode === "transit"
+            ? { transitOptions: { departureTime: new Date() } }
+            : {}),
+        });
+        if (cancelled) return;
+
+        rendererRef.current.setDirections(result);
+
+        const leg = result.routes[0]?.legs[0];
+        if (leg) {
+          const summary: DirectionsSummary = {
+            totalDuration: leg.duration?.text || "",
+            totalDistance: leg.distance?.text || "",
+            steps: (leg.steps || []).map((s) => ({
+              instructions: s.instructions || "",
+              duration: s.duration?.text || "",
+              distance: s.distance?.text || "",
+              mode: s.travel_mode || "WALKING",
+              transitLine:
+                s.transit?.line?.short_name || s.transit?.line?.name,
+              transitVehicle:
+                s.transit?.line?.vehicle?.name || s.transit?.line?.vehicle?.type,
+            })),
+            fare: (result.routes[0].fare as { text?: string } | undefined)?.text,
+          };
+          onResult?.(summary);
+        }
+      } catch {
+        // Silently leave the route empty; the bottom sheet will show a fallback message.
+        if (!cancelled) onResult?.(null);
+      }
+    };
+
+    run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [map, target, mode, isDark, onResult]);
+
+  return null;
 }
 
 function UserLocationDot() {
@@ -311,7 +467,8 @@ function UserLocationDot() {
   return (
     <button
       onClick={centerOnMe}
-      className="fixed bottom-4 right-3 z-10 w-11 h-11 rounded-full bg-white/95 dark:bg-stone-900/95 backdrop-blur-md shadow-lg border border-stone-200/80 dark:border-stone-700 flex items-center justify-center cursor-pointer hover:bg-white transition-colors"
+      className="fixed right-3 z-10 w-11 h-11 rounded-full bg-white/95 dark:bg-stone-900/95 backdrop-blur-md shadow-lg border border-stone-200/80 dark:border-stone-700 flex items-center justify-center cursor-pointer hover:bg-white transition-colors"
+      style={{ bottom: "calc(76px + env(safe-area-inset-bottom))" }}
       title="Center on my location"
     >
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4285f4" strokeWidth="2.5" strokeLinecap="round">
@@ -472,7 +629,15 @@ const DARK_CLEAN_STYLES: google.maps.MapTypeStyle[] = [
   { featureType: "transit.station", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
 ];
 
-export default function MapComponent({ places, selectedPlace, onSelectPlace, isFavorite }: MapProps) {
+export default function MapComponent({
+  places,
+  selectedPlace,
+  onSelectPlace,
+  isFavorite,
+  directionsTarget,
+  directionsMode = "walking",
+  onDirectionsResult,
+}: MapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const [mapMode, setMapMode] = useState<MapMode>("clean");
   const homeHotel = places.find((p) => p.isHomeHotel);
@@ -495,7 +660,12 @@ export default function MapComponent({ places, selectedPlace, onSelectPlace, isF
   }
 
   return (
-    <div className="fixed top-[68px] md:top-[72px] left-0 right-0 bottom-0 z-0">
+    <div
+      className="fixed top-[68px] md:top-[72px] left-0 right-0 z-0"
+      style={{
+        bottom: "calc(56px + env(safe-area-inset-bottom))",
+      }}
+    >
       <GoogleMap
         defaultCenter={PRAGUE_CENTER}
         defaultZoom={13}
@@ -514,6 +684,11 @@ export default function MapComponent({ places, selectedPlace, onSelectPlace, isF
           selectedPlace={selectedPlace}
           onSelectPlace={onSelectPlace}
           isFavorite={isFavorite}
+        />
+        <DirectionsLayer
+          target={directionsTarget}
+          mode={directionsMode}
+          onResult={onDirectionsResult}
         />
         <MapModeApplier mode={mapMode} />
         <UserLocationDot />

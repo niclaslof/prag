@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
+import { WeatherCard } from "./Weather";
 
 interface MenuProps {
   isOpen: boolean;
@@ -9,6 +10,7 @@ interface MenuProps {
   onOpenTransport: () => void;
   onOpenRoute: () => void;
   onOpenFilters: () => void;
+  onOpenInfo: () => void;
   placeCount: number;
   favoriteCount: number;
   homeHotelName?: string;
@@ -30,6 +32,7 @@ export default function Menu({
   onOpenTransport,
   onOpenRoute,
   onOpenFilters,
+  onOpenInfo,
   placeCount,
   favoriteCount,
   homeHotelName,
@@ -48,6 +51,15 @@ export default function Menu({
       accent: true,
     },
     {
+      icon: <span className="text-lg">ℹ</span>,
+      label: "Essentials & info",
+      description: "Weather, emergency, tickets, phrases",
+      onClick: () => {
+        onOpenInfo();
+        onClose();
+      },
+    },
+    {
       icon: <span className="text-lg">☰</span>,
       label: "All places",
       description: `${placeCount} spots on the map`,
@@ -59,7 +71,7 @@ export default function Menu({
     {
       icon: <span className="text-lg">⚙</span>,
       label: "Filters",
-      description: "Category, price, rating, district",
+      description: "Category, price, rating, kid-friendly",
       onClick: () => {
         onOpenFilters();
         onClose();
@@ -89,10 +101,11 @@ export default function Menu({
 
       {/* Drawer */}
       <aside
-        className={`fixed left-0 top-0 bottom-0 w-[320px] max-w-[88vw] bg-panel z-[71] shadow-2xl transition-transform duration-300 ease-out ${
+        className={`fixed left-0 top-0 bottom-0 w-[340px] max-w-[88vw] bg-panel z-[71] shadow-2xl transition-transform duration-300 ease-out overflow-y-auto ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
         onClick={(e) => e.stopPropagation()}
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-200 dark:border-stone-800">
           <div>
@@ -146,7 +159,12 @@ export default function Menu({
           ))}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 px-5 py-4 border-t border-stone-200 dark:border-stone-800 text-[0.65rem] text-warm">
+        {/* Weather card */}
+        <div className="px-5 pt-2 pb-6">
+          <WeatherCard />
+        </div>
+
+        <div className="px-5 py-4 border-t border-stone-200 dark:border-stone-800 text-[0.65rem] text-warm">
           <p className="leading-relaxed">
             Data: curated + Google Places.<br />
             Built with Next.js · Tailwind · Google Maps.
