@@ -2,6 +2,20 @@
 
 import { useState, useEffect } from "react";
 
+/** Read-only hook: returns whether the <html> element has the .dark class. */
+export function useIsDark() {
+  const [isDark, setIsDark] = useState(false);
+  useEffect(() => {
+    const el = document.documentElement;
+    const sync = () => setIsDark(el.classList.contains("dark"));
+    sync();
+    const obs = new MutationObserver(sync);
+    obs.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark;
+}
+
 export function useDarkMode() {
   const [isDark, setIsDark] = useState(false);
 

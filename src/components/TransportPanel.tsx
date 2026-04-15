@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useApiIsLoaded } from "@vis.gl/react-google-maps";
 import { Place } from "@/lib/types";
 
@@ -85,25 +85,33 @@ export default function TransportPanel({
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [origin, setOrigin] = useState<"airport" | "current">("airport");
 
-  const destination = homeHotel
-    ? { lat: homeHotel.lat, lng: homeHotel.lng, name: homeHotel.name }
-    : null;
+  // Use primitives as dependencies so we don't thrash the effect.
+  const destLat = homeHotel?.lat;
+  const destLng = homeHotel?.lng;
+  const destName = homeHotel?.name;
 
-  const fetchRoute = useCallback(
-    async (from: { lat: number; lng: number }) => {
-      if (!destination) return;
+  // Auto-fetch when the panel opens or the origin/destination changes.
+  // Primitives only → no infinite render loop.
+  useEffect(() => {
+    if (!isOpen || !apiLoaded) return;
+    if (destLat === undefined || destLng === undefined) return;
+
+    let cancelled = false;
+    const destination = { lat: destLat, lng: destLng };
+
+    const run = async (from: { lat: number; lng: number }) => {
       setLoading(true);
       setError(null);
       setRoute(null);
       try {
-        // Ensure routes library is loaded
         const { DirectionsService } = (await google.maps.importLibrary(
           "routes"
         )) as google.maps.RoutesLibrary;
+        if (cancelled) return;
         const service = new DirectionsService();
         const result = await service.route({
           origin: from,
-          destination: { lat: destination.lat, lng: destination.lng },
+          destination,
           travelMode: google.maps.TravelMode.TRANSIT,
           transitOptions: {
             departureTime: new Date(),
@@ -115,6 +123,7 @@ export default function TransportPanel({
             ],
           },
         });
+        if (cancelled) return;
         const leg = result.routes[0]?.legs[0];
         if (!leg) {
           setError("No route found.");
@@ -131,32 +140,35 @@ export default function TransportPanel({
           fare: (result.routes[0].fare as { text?: string } | undefined)?.text,
         });
       } catch (e: unknown) {
+        if (cancelled) return;
         const msg = e instanceof Error ? e.message : String(e);
         setError(
           `Could not fetch directions: ${msg}. ` +
             "Make sure the 'Directions API' is enabled in Google Cloud for this key."
         );
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    },
-    [destination]
-  );
+    };
 
-  // Auto-fetch from airport when panel opens
-  useEffect(() => {
-    if (!isOpen || !apiLoaded || !destination) return;
     if (origin === "airport") {
-      fetchRoute(PRG_AIRPORT);
+      run(PRG_AIRPORT);
     } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) =>
-          fetchRoute({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => setError("Location permission denied.")
+        (pos) => {
+          if (cancelled) return;
+          run({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        },
+        () => {
+          if (!cancelled) setError("Location permission denied.");
+        }
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, apiLoaded, origin, destination]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, apiLoaded, origin, destLat, destLng]);
 
   return (
     <>
@@ -181,7 +193,7 @@ export default function TransportPanel({
               Live transit
             </p>
             <h2 className="font-[family-name:var(--font-playfair)] text-xl font-bold leading-tight">
-              Airport → {destination?.name || "Home"}
+              Airport → {destName || "Home"}
             </h2>
             <p className="text-[0.7rem] opacity-90 mt-1">
               Updated {new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
@@ -310,13 +322,13 @@ export default function TransportPanel({
               </ol>
 
               {/* Open in Maps */}
-              {destination && (
+              {destLat !== undefined && destLng !== undefined && (
                 <a
                   href={`https://www.google.com/maps/dir/?api=1&origin=${
                     origin === "airport"
                       ? `${PRG_AIRPORT.lat},${PRG_AIRPORT.lng}`
                       : "Current+Location"
-                  }&destination=${destination.lat},${destination.lng}&travelmode=transit`}
+                  }&destination=${destLat},${destLng}&travelmode=transit`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-5 inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-ink text-paper text-sm font-semibold hover:bg-accent transition-colors"

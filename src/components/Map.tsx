@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { Place, CATEGORIES, PRAGUE_CENTER } from "@/lib/types";
+import { useIsDark } from "@/lib/useDarkMode";
 
 interface MapProps {
   places: Place[];
@@ -52,12 +53,29 @@ function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite }: MapPr
     };
 
     const makeHomeStarSvg = () =>
-      `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60">` +
-      `<defs><filter id="g" x="-50%" y="-50%" width="200%" height="200%">` +
-      `<feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#f59e0b" flood-opacity="0.6"/>` +
-      `</filter></defs>` +
-      `<circle cx="30" cy="30" r="24" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>` +
-      `<path filter="url(#g)" d="M30 9 L34.9 22.3 L49 23.2 L38 32.1 L41.8 45.8 L30 38 L18.2 45.8 L22 32.1 L11 23.2 L25.1 22.3 Z" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"/>` +
+      `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">` +
+      `<defs>` +
+      `<filter id="g" x="-50%" y="-50%" width="200%" height="200%">` +
+      `<feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#f59e0b" flood-opacity="0.7"/>` +
+      `</filter>` +
+      `<radialGradient id="halo" cx="50%" cy="50%" r="50%">` +
+      `<stop offset="0%" stop-color="#fde68a" stop-opacity="0.9"/>` +
+      `<stop offset="70%" stop-color="#fbbf24" stop-opacity="0.35"/>` +
+      `<stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>` +
+      `</radialGradient>` +
+      `<linearGradient id="star" x1="0" y1="0" x2="0" y2="1">` +
+      `<stop offset="0%" stop-color="#fde68a"/>` +
+      `<stop offset="60%" stop-color="#f59e0b"/>` +
+      `<stop offset="100%" stop-color="#d97706"/>` +
+      `</linearGradient>` +
+      `</defs>` +
+      // soft glow halo
+      `<circle cx="48" cy="48" r="46" fill="url(#halo)"/>` +
+      // inner disc
+      `<circle cx="48" cy="48" r="36" fill="#fffbe6" stroke="#f59e0b" stroke-width="2.5"/>` +
+      // the star
+      `<path filter="url(#g)" d="M48 12 L56.5 33.5 L80 35 L62 51.2 L68 74.5 L48 61.2 L28 74.5 L34 51.2 L16 35 L39.5 33.5 Z" ` +
+      `fill="url(#star)" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>` +
       `</svg>`;
 
     const markers = places.map((place) => {
@@ -71,8 +89,8 @@ function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite }: MapPr
           title: place.name,
           icon: {
             url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
-            scaledSize: new google.maps.Size(60, 60),
-            anchor: new google.maps.Point(30, 30),
+            scaledSize: new google.maps.Size(96, 96),
+            anchor: new google.maps.Point(48, 48),
           },
           zIndex: 50000,
           optimized: true,
@@ -406,19 +424,70 @@ const CLEAN_STYLES: google.maps.MapTypeStyle[] = [
   { featureType: "transit.station", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
 ];
 
+/** Dark variant of the clean style – warm graphite base to match the app chrome. */
+const DARK_CLEAN_STYLES: google.maps.MapTypeStyle[] = [
+  { elementType: "geometry", stylers: [{ color: "#17140f" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#17140f" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8e8578" }] },
+  { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#c6b89f" }],
+  },
+  {
+    featureType: "administrative.neighborhood",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#6b6459" }],
+  },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#2a241b" }] },
+  { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#32291e" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#3d3223" }] },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#b5a48a" }],
+  },
+  {
+    featureType: "road.local",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#645c4f" }],
+  },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0f1820" }] },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#4f6372" }],
+  },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#1c2418" }] },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#5a6a48" }],
+  },
+  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.attraction", elementType: "labels.text", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "transit.station", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+];
+
 export default function MapComponent({ places, selectedPlace, onSelectPlace, isFavorite }: MapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const [mapMode, setMapMode] = useState<MapMode>("clean");
   const homeHotel = places.find((p) => p.isHomeHotel);
+  const isDark = useIsDark();
+  const styles =
+    mapMode === "clean" ? (isDark ? DARK_CLEAN_STYLES : CLEAN_STYLES) : undefined;
 
   if (!apiKey) {
     return (
-      <div className="fixed top-[68px] md:top-[72px] left-0 right-0 bottom-0 flex items-center justify-center bg-stone-100">
-        <div className="text-center p-8 bg-white rounded-xl shadow-lg max-w-md">
-          <p className="text-lg font-semibold mb-2">Google Maps API key missing</p>
+      <div className="fixed top-[68px] md:top-[72px] left-0 right-0 bottom-0 flex items-center justify-center bg-stone-100 dark:bg-stone-950">
+        <div className="text-center p-8 bg-white dark:bg-stone-900 rounded-xl shadow-lg max-w-md">
+          <p className="text-lg font-semibold mb-2 text-ink">Google Maps API key missing</p>
           <p className="text-sm text-warm">
-            Add <code className="bg-stone-100 px-1.5 py-0.5 rounded text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to{" "}
-            <code className="bg-stone-100 px-1.5 py-0.5 rounded text-xs">.env.local</code>
+            Add <code className="bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded text-xs">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to{" "}
+            <code className="bg-stone-100 dark:bg-stone-800 px-1.5 py-0.5 rounded text-xs">.env.local</code>
           </p>
         </div>
       </div>
@@ -437,7 +506,8 @@ export default function MapComponent({ places, selectedPlace, onSelectPlace, isF
         streetViewControl={false}
         fullscreenControl={true}
         className="w-full h-full"
-        styles={mapMode === "clean" ? CLEAN_STYLES : undefined}
+        styles={styles}
+        colorScheme={isDark ? "DARK" : "LIGHT"}
       >
         <MarkerLayer
           places={places}

@@ -152,7 +152,7 @@ export default function RoutePlanner({
         </div>
 
         {/* Travel mode */}
-        <div className="px-5 py-3 bg-stone-50 border-b border-stone-200 shrink-0">
+        <div className="px-5 py-3 bg-stone-50 dark:bg-stone-900/60 border-b border-stone-200 dark:border-stone-800 shrink-0">
           <p className="text-xs text-warm font-semibold uppercase mb-2">How will you travel?</p>
           <div className="flex gap-2">
             {(["walking", "driving", "transit"] as TravelMode[]).map((m) => (
@@ -162,7 +162,7 @@ export default function RoutePlanner({
                 className={`flex-1 py-2 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
                   travelMode === m
                     ? "bg-accent text-white"
-                    : "bg-white border border-stone-300 text-stone-600 hover:border-accent"
+                    : "bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-600 dark:text-stone-300 hover:border-accent"
                 }`}
               >
                 {m === "walking" && "🚶 Walk"}
@@ -174,11 +174,11 @@ export default function RoutePlanner({
         </div>
 
         {/* Start position */}
-        <div className="px-5 py-3 bg-stone-50 border-b border-stone-200 shrink-0">
+        <div className="px-5 py-3 bg-stone-50 dark:bg-stone-900/60 border-b border-stone-200 dark:border-stone-800 shrink-0">
           <p className="text-xs text-warm font-semibold uppercase mb-2">Start point</p>
           {userPos ? (
             <div className="flex items-center gap-2">
-              <span className="text-green-600 text-sm">📍 Using your location</span>
+              <span className="text-green-600 dark:text-green-400 text-sm">📍 Using your location</span>
               <button
                 onClick={() => setUserPos(null)}
                 className="text-xs text-warm hover:text-ink cursor-pointer"
@@ -190,7 +190,7 @@ export default function RoutePlanner({
             <button
               onClick={handleGetPosition}
               disabled={gettingPos}
-              className="px-3 py-1.5 rounded-lg bg-white border border-stone-300 text-sm font-medium cursor-pointer hover:border-accent transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 rounded-lg bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-sm font-medium cursor-pointer hover:border-accent transition-colors disabled:opacity-50"
             >
               {gettingPos ? "⏳ Locating..." : "📍 Use my location as start"}
             </button>
