@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-ink: #1c1917;
+  --color-paper: #faf8f5;
+  --color-accent: #b45309;
+  --color-accent-light: #f59e0b;
+  --color-warm: #78716c;
+  --color-panel: #fefdfb;
+  --color-tag-bg: #fef3c7;
+  --color-tag-text: #92400e;
+  --color-new-bg: #dcfce7;
+  --color-new-text: #166534;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* Dark mode – toggled via .dark class on html */
+html.dark body {
+  background: #0c0a09;
+  color: #e7e5e4;
+}
+html.dark .bg-paper { background: #0c0a09 !important; }
+html.dark .bg-panel { background: #1c1917 !important; }
+html.dark .text-ink { color: #e7e5e4 !important; }
+html.dark .text-warm { color: #a8a29e !important; }
+html.dark .bg-tag-bg { background: #292524 !important; }
+html.dark .text-tag-text { color: #d6d3d1 !important; }
+html.dark .border-stone-200 { border-color: #292524 !important; }
+html.dark .border-stone-100 { border-color: #1c1917 !important; }
+html.dark .bg-stone-50 { background: #1c1917 !important; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 3px; }
+html.dark ::-webkit-scrollbar-thumb { background: #44403c; }
+
+/* Hide horizontal scrollbar in filter bar */
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Google Maps overrides */
+.gm-style-iw { font-family: var(--font-sans) !important; }

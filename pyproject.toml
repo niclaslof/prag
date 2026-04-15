@@ -1,0 +1,22 @@
+[project]
+name = "prag-scripts"
+version = "1.0.0"
+description = "Prague Explorer data pipeline – Google Places API (New), enrichment, AI descriptions"
+requires-python = ">=3.11"
+
+dependencies = [
+    "requests>=2.31.0",
+    "Pillow>=10.0.0",
+    "python-dotenv>=1.0.0",
+    "openai>=1.0.0",
+    "anthropic>=0.39.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.4.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
