@@ -201,7 +201,7 @@ export default function PlacePanel({
               {meta.emoji} {meta.name}
             </span>
             {place.isTopPick && (
-              <span className="text-[0.6rem] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full bg-amber-100 text-amber-800">
+              <span className="text-[0.6rem] font-semibold uppercase tracking-wide px-2.5 py-1 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
                 ⭐ Top pick
               </span>
             )}
@@ -241,7 +241,7 @@ export default function PlacePanel({
               </span>
             )}
             {place.priceLevel !== undefined && place.priceLevel > 0 && (
-              <span className="text-green-700 font-semibold">
+              <span className="text-green-700 dark:text-green-400 font-semibold">
                 {PRICE_SYMBOLS[place.priceLevel]}
               </span>
             )}
@@ -323,14 +323,14 @@ export default function PlacePanel({
                 href={place.website.startsWith("http") ? place.website : `https://${place.website}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-stone-100 text-ink text-sm font-semibold border border-stone-200 hover:border-accent hover:text-accent transition-colors"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-ink text-sm font-semibold border border-stone-200 dark:border-stone-700 hover:border-accent hover:text-accent transition-colors"
               >
                 🌐 Website
               </a>
             )}
             <a
               href={`/place/${place.category}/${place.id}`}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-stone-100 text-ink text-sm font-semibold border border-stone-200 hover:border-accent hover:text-accent transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-ink text-sm font-semibold border border-stone-200 dark:border-stone-700 hover:border-accent hover:text-accent transition-colors"
             >
               🔗 Share
             </a>
