@@ -56,6 +56,8 @@ export interface Place {
   isNew?: boolean;
   /** The user's home hotel – renders as an oversized star on the map. */
   isHomeHotel?: boolean;
+  /** Suitable for kids / families (playground, interactive, easy access, safe). */
+  isKidFriendly?: boolean;
 }
 
 export type CategoryFilter = Category | "all";

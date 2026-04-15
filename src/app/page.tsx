@@ -1,15 +1,21 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import Header from "@/components/Header";
 import SearchBar from "@/components/SearchBar";
-import MapComponent from "@/components/Map";
+import MapComponent, {
+  type DirectionsMode,
+  type DirectionsSummary,
+} from "@/components/Map";
 import PlacePanel from "@/components/PlacePanel";
 import PlaceList from "@/components/PlaceList";
 import RoutePlanner from "@/components/RoutePlanner";
 import Menu from "@/components/Menu";
 import TransportPanel from "@/components/TransportPanel";
+import InfoPanel from "@/components/InfoPanel";
+import BottomNav from "@/components/BottomNav";
+import DirectionsBar from "@/components/DirectionsBar";
 import { allPlaces } from "@/data/places";
 import {
   Place,
@@ -62,13 +68,21 @@ export default function Home() {
   const [minRating, setMinRating] = useState(0);
   const [activeDistricts, setActiveDistricts] = useState<District[]>([]);
   const [openNowOnly, setOpenNowOnly] = useState(false);
+  const [kidFriendlyOnly, setKidFriendlyOnly] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [listOpen, setListOpen] = useState(false);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const [routeOpen, setRouteOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [transportOpen, setTransportOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const [focusFilters, setFocusFilters] = useState(0);
+
+  // Interactive in-app directions
+  const [directionsTarget, setDirectionsTarget] = useState<Place | null>(null);
+  const [directionsMode, setDirectionsMode] = useState<DirectionsMode>("walking");
+  const [directionsSummary, setDirectionsSummary] =
+    useState<DirectionsSummary | null>(null);
 
   const { favoriteCount, toggleFavorite, isFavorite } = useFavorites();
   const { isDark, toggle: toggleDark } = useDarkMode();
@@ -100,6 +114,7 @@ export default function Home() {
     setMinRating(0);
     setActiveDistricts([]);
     setOpenNowOnly(false);
+    setKidFriendlyOnly(false);
   };
 
   const filtered = useMemo(() => {
@@ -144,6 +159,7 @@ export default function Home() {
       }
 
       if (openNowOnly && !isOpenNow(p)) return false;
+      if (kidFriendlyOnly && !p.isKidFriendly) return false;
 
       return true;
     });
@@ -154,6 +170,7 @@ export default function Home() {
     minRating,
     activeDistricts,
     openNowOnly,
+    kidFriendlyOnly,
     showFavoritesOnly,
     isFavorite,
   ]);
@@ -161,10 +178,20 @@ export default function Home() {
   const favoritePlaces = allPlaces.filter((p) => isFavorite(p.category, p.id));
   const homeHotel = allPlaces.find((p) => p.isHomeHotel);
 
+  // Memoised callback for the directions layer so Map doesn't re-mount.
+  const handleDirectionsResult = useCallback(
+    (summary: DirectionsSummary | null) => setDirectionsSummary(summary),
+    []
+  );
+
+  const handleStartDirections = (place: Place) => {
+    setDirectionsTarget(place);
+    setDirectionsSummary(null); // reset until new summary arrives
+  };
+
   return (
     <APIProvider apiKey={apiKey}>
       <Header
-        placeCount={filtered.length}
         activeCategories={activeCategories}
         favoriteCount={favoriteCount}
         isDark={isDark}
@@ -189,6 +216,8 @@ export default function Home() {
         availableDistricts={availableDistricts}
         openNowOnly={openNowOnly}
         onToggleOpenNow={() => setOpenNowOnly(!openNowOnly)}
+        kidFriendlyOnly={kidFriendlyOnly}
+        onToggleKidFriendly={() => setKidFriendlyOnly(!kidFriendlyOnly)}
         onClearFilters={handleClearFilters}
         forceOpenNonce={focusFilters}
       />
@@ -198,6 +227,9 @@ export default function Home() {
         selectedPlace={selectedPlace}
         onSelectPlace={setSelectedPlace}
         isFavorite={isFavorite}
+        directionsTarget={directionsTarget}
+        directionsMode={directionsMode}
+        onDirectionsResult={handleDirectionsResult}
       />
 
       <PlacePanel
@@ -209,6 +241,7 @@ export default function Home() {
         onToggleFavorite={() => {
           if (selectedPlace) toggleFavorite(selectedPlace.category, selectedPlace.id);
         }}
+        onStartDirections={handleStartDirections}
       />
 
       <PlaceList
@@ -237,6 +270,7 @@ export default function Home() {
         onOpenTransport={() => setTransportOpen(true)}
         onOpenRoute={() => setRouteOpen(true)}
         onOpenFilters={() => setFocusFilters((n) => n + 1)}
+        onOpenInfo={() => setInfoOpen(true)}
         placeCount={filtered.length}
         favoriteCount={favoriteCount}
         homeHotelName={homeHotel?.name}
@@ -248,23 +282,28 @@ export default function Home() {
         homeHotel={homeHotel}
       />
 
-      {/* Bottom bar */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex gap-2 pointer-events-none">
-        <button
-          onClick={() => setListOpen(!listOpen)}
-          className="pointer-events-auto px-5 py-2.5 rounded-full bg-ink/95 backdrop-blur-md text-paper text-xs font-medium shadow-xl border border-white/10 hover:bg-ink transition-all cursor-pointer"
-        >
-          List · {filtered.length}
-        </button>
-        {favoriteCount > 0 && (
-          <button
-            onClick={() => setRouteOpen(true)}
-            className="pointer-events-auto px-5 py-2.5 rounded-full bg-accent/95 backdrop-blur-md text-paper text-xs font-medium shadow-xl border border-white/10 hover:bg-accent transition-all cursor-pointer"
-          >
-            Itinerary · ♥ {favoriteCount}
-          </button>
-        )}
-      </div>
+      <InfoPanel isOpen={infoOpen} onClose={() => setInfoOpen(false)} />
+
+      <DirectionsBar
+        target={directionsTarget}
+        mode={directionsMode}
+        onModeChange={setDirectionsMode}
+        summary={directionsSummary}
+        onClear={() => {
+          setDirectionsTarget(null);
+          setDirectionsSummary(null);
+        }}
+      />
+
+      <BottomNav
+        onOpenList={() => setListOpen(true)}
+        onOpenTransport={() => setTransportOpen(true)}
+        onOpenRoute={() => setRouteOpen(true)}
+        onOpenInfo={() => setInfoOpen(true)}
+        onOpenMenu={() => setMenuOpen(true)}
+        listCount={filtered.length}
+        favoriteCount={favoriteCount}
+      />
     </APIProvider>
   );
 }

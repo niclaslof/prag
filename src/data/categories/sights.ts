@@ -186,6 +186,7 @@ export const sights: Place[] = [
     aiDescription:
       "Petřín is Prague's leafy answer to Paris – rose gardens, orchards and a scaled-down 'Eiffel Tower' built for the 1891 Jubilee Exhibition (63.5 m tall, 299 steps; lift available). On the hill you'll also find a mirror maze, the Baroque Church of St. Lawrence, an observatory, and the 'Hunger Wall' commissioned by Charles IV to employ the poor in 1360. The funicular runs from Újezd tram stop and costs the same as a regular tram ticket.",
     isTopPick: true,
+    isKidFriendly: true,
   },
   {
     id: 211,
@@ -205,6 +206,7 @@ export const sights: Place[] = [
     aiDescription:
       "According to legend, the original seat of Czech rulers before they moved to Prague Castle. Today it's a fortified park perched on a cliff above the Vltava with three key monuments: the 11th-century St. Martin Rotunda (the city's oldest surviving building), the neo-Gothic Basilica of St. Peter & St. Paul with its striking twin spires, and the Vyšehrad Cemetery where Dvořák, Smetana, Mucha and Karel Čapek are buried. Half the locals' favourite sunset spot, with far fewer tourists than Prague Castle.",
     isTopPick: true,
+    isKidFriendly: true,
   },
   {
     id: 212,
@@ -294,6 +296,7 @@ export const sights: Place[] = [
     aiDescription:
       "A 25 ha plateau across the river from Old Town, Letná offers arguably the best skyline view in Prague – all the bridges, the Castle, the Týn spires. It's where Praguers go to skate, cycle, walk dogs and drink beer at the no-frills Letná Beer Garden (open Apr–Oct, giant wooden tables, cheap Pilsner on tap). The giant metronome on the former Stalin monument plinth is the unofficial gathering point for skateboarders.",
     isTopPick: true,
+    isKidFriendly: true,
   },
   {
     id: 217,
@@ -325,6 +328,7 @@ export const sights: Place[] = [
     rating: 4.7,
     userRatingsTotal: 23000,
     description: "Saturday farmers market on the embankment; every summer night it's a kilometre of floating bars.",
+    isKidFriendly: true,
   },
   {
     id: 299,

@@ -9,6 +9,7 @@ interface PlacePanelProps {
   onClose: () => void;
   isFavorite: boolean;
   onToggleFavorite: () => void;
+  onStartDirections?: (place: Place) => void;
 }
 
 function formatStars(rating?: number): string {
@@ -27,6 +28,7 @@ export default function PlacePanel({
   onClose,
   isFavorite,
   onToggleFavorite,
+  onStartDirections,
 }: PlacePanelProps) {
   const [slideIdx, setSlideIdx] = useState(0);
   // Reset slider whenever a new place is opened
@@ -310,14 +312,17 @@ export default function PlacePanel({
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
-            <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lng}&destination_place_id=${place.placeId || ""}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-ink text-paper text-sm font-semibold hover:bg-accent transition-colors"
+            <button
+              onClick={() => {
+                if (onStartDirections && place) {
+                  onStartDirections(place);
+                  onClose();
+                }
+              }}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-ink text-paper text-sm font-semibold hover:bg-accent transition-colors cursor-pointer"
             >
               🧭 Directions
-            </a>
+            </button>
             {place.website && (
               <a
                 href={place.website.startsWith("http") ? place.website : `https://${place.website}`}

@@ -1,9 +1,9 @@
 "use client";
 
 import { Category, CATEGORIES } from "@/lib/types";
+import { WeatherChip } from "./Weather";
 
 interface HeaderProps {
-  placeCount: number;
   activeCategories: Category[];
   favoriteCount: number;
   isDark: boolean;
@@ -12,7 +12,6 @@ interface HeaderProps {
 }
 
 export default function Header({
-  placeCount,
   activeCategories,
   favoriteCount,
   isDark,
@@ -41,8 +40,9 @@ export default function Header({
 
         {/* Right side */}
         <div className="flex items-center gap-3">
+          <WeatherChip />
           {/* Category dots */}
-          <div className="flex items-center gap-1">
+          <div className="hidden md:flex items-center gap-1">
             {activeCategories.map((cat) => (
               <div
                 key={cat}
@@ -57,10 +57,6 @@ export default function Header({
               ♥ {favoriteCount}
             </span>
           )}
-          {/* Count */}
-          <span className="text-[0.7rem] md:text-xs text-warm font-medium tabular-nums">
-            {placeCount} places
-          </span>
           {/* Dark toggle */}
           <button
             onClick={onToggleDark}
