@@ -21,6 +21,8 @@ export const restaurants: Place[] = [
     userRatingsTotal: 8500,
     website: "https://lokal-dlouha.ambi.cz",
     description: "Reliable pick for authentic Czech goulash, svíčková and crisp unfiltered Pilsner served from the tank.",
+    aiDescription:
+      "Flagship of the Ambiente group's 'Lokál' chain – a modern take on the classic Czech pub focused on freshness and quality. Svíčková (roast beef in cream sauce with dumplings), goulash, fried cheese, tatarák – all the pub standards done right. The draw is the Pilsner: served unpasteurised directly from horizontal tanks delivered daily from the Pilsen brewery, rotated in glass-lined vessels so the beer never sees metal. Ask for 'hladinka' (creamy half-foam pour) or 'mlíko' (all-foam milkshake pour). Book ahead for dinner.",
     isTopPick: true,
   },
   {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { APIProvider, Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
+import { Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { Place, CATEGORIES, PRAGUE_CENTER } from "@/lib/types";
 
@@ -35,29 +35,62 @@ function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite }: MapPr
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
+    const makePinSvg = (color: string, fav: boolean, emoji: string) => {
+      const stroke = fav ? "#f59e0b" : "#ffffff";
+      const strokeW = fav ? 2.5 : 2;
+      return (
+        `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44">` +
+        `<defs><filter id="s" x="-20%" y="-20%" width="140%" height="140%">` +
+        `<feDropShadow dx="0" dy="1.2" stdDeviation="1.2" flood-color="#000" flood-opacity="0.25"/>` +
+        `</filter></defs>` +
+        `<path filter="url(#s)" d="M17 2 C8.7 2 2 8.7 2 17 C2 28 17 42 17 42 C17 42 32 28 32 17 C32 8.7 25.3 2 17 2 Z" ` +
+        `fill="${color}" stroke="${stroke}" stroke-width="${strokeW}"/>` +
+        `<circle cx="17" cy="17" r="9" fill="#ffffff"/>` +
+        `<text x="17" y="17" text-anchor="middle" dominant-baseline="central" font-size="12" font-family="-apple-system, system-ui, sans-serif">${fav ? "♥" : emoji}</text>` +
+        `</svg>`
+      );
+    };
+
+    const makeHomeStarSvg = () =>
+      `<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60">` +
+      `<defs><filter id="g" x="-50%" y="-50%" width="200%" height="200%">` +
+      `<feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#f59e0b" flood-opacity="0.6"/>` +
+      `</filter></defs>` +
+      `<circle cx="30" cy="30" r="24" fill="#fef3c7" stroke="#f59e0b" stroke-width="2"/>` +
+      `<path filter="url(#g)" d="M30 9 L34.9 22.3 L49 23.2 L38 32.1 L41.8 45.8 L30 38 L18.2 45.8 L22 32.1 L11 23.2 L25.1 22.3 Z" fill="#f59e0b" stroke="#ffffff" stroke-width="1.5"/>` +
+      `</svg>`;
+
     const markers = places.map((place) => {
       const meta = CATEGORIES[place.category];
-      const pinColor = place.isTopPick ? "#f59e0b" : meta.color;
       const fav = isFavorite?.(place.category, place.id) ?? false;
+
+      if (place.isHomeHotel) {
+        const svg = makeHomeStarSvg();
+        const marker = new google.maps.Marker({
+          position: { lat: place.lat, lng: place.lng },
+          title: place.name,
+          icon: {
+            url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+            scaledSize: new google.maps.Size(60, 60),
+            anchor: new google.maps.Point(30, 30),
+          },
+          zIndex: 50000,
+          optimized: true,
+        });
+        marker.addListener("click", () => onSelectPlace(place));
+        return marker;
+      }
+
+      const pinColor = place.isTopPick ? "#f59e0b" : meta.color;
+      const svg = makePinSvg(pinColor, fav, meta.emoji);
 
       const marker = new google.maps.Marker({
         position: { lat: place.lat, lng: place.lng },
         title: place.name,
-        label: {
-          text: fav ? "♥" : meta.emoji,
-          color: "#fff",
-          fontWeight: "700",
-          fontSize: "12px",
-        },
         icon: {
-          path: "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z",
-          fillColor: pinColor,
-          fillOpacity: 1,
-          strokeColor: fav ? "#f59e0b" : "#fff",
-          strokeWeight: fav ? 3 : 2,
-          scale: 1.6,
-          anchor: new google.maps.Point(12, 22),
-          labelOrigin: new google.maps.Point(12, 9),
+          url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+          scaledSize: new google.maps.Size(34, 44),
+          anchor: new google.maps.Point(17, 42),
         },
         optimized: true,
       });
@@ -137,34 +170,61 @@ function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite }: MapPr
     };
   }, [map, places, onSelectPlace, isFavorite]);
 
-  // Highlight selected marker
+  // Highlight selected marker by scaling it up
   useEffect(() => {
     markersRef.current.forEach((marker, idx) => {
       const place = places[idx];
       if (!place) return;
+      if (place.isHomeHotel) return; // home hotel stays as its golden star
       const isSelected = marker.getTitle() === selectedPlace?.name;
       const fav = isFavorite?.(place.category, place.id) ?? false;
       const meta = CATEGORIES[place.category];
-      const icon = marker.getIcon() as google.maps.Symbol;
-      if (icon) {
-        marker.setIcon({
-          ...icon,
-          fillColor: isSelected ? "#f59e0b" : place.isTopPick ? "#f59e0b" : meta.color,
-          strokeColor: fav ? "#f59e0b" : "#fff",
-          strokeWeight: fav ? 3 : 2,
-          scale: isSelected ? 2.2 : fav ? 1.9 : 1.6,
-        });
-        marker.setLabel({
-          text: fav ? "♥" : meta.emoji,
-          color: "#fff",
-          fontWeight: "700",
-          fontSize: "12px",
-        });
-      }
+      const color = isSelected ? "#f59e0b" : place.isTopPick ? "#f59e0b" : meta.color;
+      const stroke = fav ? "#f59e0b" : "#ffffff";
+      const strokeW = fav || isSelected ? 2.5 : 2;
+      const text = fav ? "♥" : meta.emoji;
+      const svg =
+        `<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44">` +
+        `<defs><filter id="s" x="-20%" y="-20%" width="140%" height="140%">` +
+        `<feDropShadow dx="0" dy="1.2" stdDeviation="1.2" flood-color="#000" flood-opacity="0.25"/>` +
+        `</filter></defs>` +
+        `<path filter="url(#s)" d="M17 2 C8.7 2 2 8.7 2 17 C2 28 17 42 17 42 C17 42 32 28 32 17 C32 8.7 25.3 2 17 2 Z" ` +
+        `fill="${color}" stroke="${stroke}" stroke-width="${strokeW}"/>` +
+        `<circle cx="17" cy="17" r="9" fill="#ffffff"/>` +
+        `<text x="17" y="17" text-anchor="middle" dominant-baseline="central" font-size="12" font-family="-apple-system, system-ui, sans-serif">${text}</text>` +
+        `</svg>`;
+      const size = isSelected ? 44 : 34;
+      const height = isSelected ? 56 : 44;
+      marker.setIcon({
+        url: "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg),
+        scaledSize: new google.maps.Size(size, height),
+        anchor: new google.maps.Point(size / 2, height - 2),
+      });
+      marker.setZIndex(isSelected ? 9999 : fav ? 500 : 100);
     });
   }, [selectedPlace, places, isFavorite]);
 
   return null;
+}
+
+function FindHomeButton({ home }: { home?: Place }) {
+  const map = useMap();
+  if (!home) return null;
+  const goHome = () => {
+    if (!map) return;
+    map.panTo({ lat: home.lat, lng: home.lng });
+    map.setZoom(16);
+  };
+  return (
+    <button
+      onClick={goHome}
+      className="fixed bottom-20 right-3 z-10 pl-3 pr-3.5 py-2 rounded-full bg-amber-500 text-white shadow-[0_4px_20px_rgba(245,158,11,0.4)] border border-amber-300 flex items-center gap-1.5 cursor-pointer hover:bg-amber-600 hover:shadow-[0_4px_24px_rgba(245,158,11,0.5)] transition-all text-[0.68rem] font-semibold"
+      title={`Find ${home.name}`}
+    >
+      <span className="text-sm leading-none">★</span>
+      Home
+    </button>
+  );
 }
 
 function UserLocationDot() {
@@ -233,7 +293,7 @@ function UserLocationDot() {
   return (
     <button
       onClick={centerOnMe}
-      className="fixed bottom-4 left-3 z-10 w-10 h-10 rounded-full bg-white/90 backdrop-blur-sm shadow-lg flex items-center justify-center cursor-pointer hover:bg-white transition-colors"
+      className="fixed bottom-4 right-3 z-10 w-11 h-11 rounded-full bg-white/95 dark:bg-stone-900/95 backdrop-blur-md shadow-lg border border-stone-200/80 dark:border-stone-700 flex items-center justify-center cursor-pointer hover:bg-white transition-colors"
       title="Center on my location"
     >
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4285f4" strokeWidth="2.5" strokeLinecap="round">
@@ -244,25 +304,58 @@ function UserLocationDot() {
   );
 }
 
-function MapTypeToggle() {
-  const map = useMap();
-  const [isSatellite, setIsSatellite] = useState(false);
+type MapMode = "clean" | "terrain" | "satellite";
 
-  const toggle = () => {
-    if (!map) return;
-    const newType = isSatellite ? "roadmap" : "hybrid";
-    map.setMapTypeId(newType);
-    setIsSatellite(!isSatellite);
-  };
+interface MapTypeToggleProps {
+  mode: MapMode;
+  onChange: (mode: MapMode) => void;
+}
+
+function MapTypeToggle({ mode, onChange }: MapTypeToggleProps) {
+  const modes: { id: MapMode; label: string; title: string }[] = [
+    { id: "clean", label: "Map", title: "Minimal map" },
+    { id: "terrain", label: "Terrain", title: "Streets & buildings" },
+    { id: "satellite", label: "Satellite", title: "Aerial view" },
+  ];
 
   return (
-    <button
-      onClick={toggle}
-      className="fixed top-[70px] md:top-[74px] right-2 z-10 px-2.5 py-1.5 rounded-full bg-white/90 backdrop-blur-sm shadow-md text-[0.65rem] font-medium cursor-pointer hover:bg-white transition-colors"
-    >
-      {isSatellite ? "Map" : "Satellite"}
-    </button>
+    <div className="fixed top-[74px] md:top-[80px] right-2 z-10 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md shadow-lg rounded-full p-0.5 flex gap-0.5 border border-stone-200 dark:border-stone-700">
+      {modes.map((m) => (
+        <button
+          key={m.id}
+          onClick={() => onChange(m.id)}
+          title={m.title}
+          className={`px-2.5 py-1 rounded-full text-[0.6rem] font-semibold uppercase tracking-wide transition-colors cursor-pointer ${
+            mode === m.id
+              ? "bg-ink text-paper dark:bg-paper dark:text-ink"
+              : "text-stone-500 hover:text-ink dark:text-stone-400 dark:hover:text-paper"
+          }`}
+        >
+          {m.label}
+        </button>
+      ))}
+    </div>
   );
+}
+
+function MapModeApplier({ mode }: { mode: MapMode }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    if (mode === "satellite") {
+      map.setMapTypeId("hybrid");
+      map.setTilt(45); // aerial 3D when zoomed in
+    } else if (mode === "terrain") {
+      // Google's native roadmap without custom styles shows real buildings,
+      // roads and POIs. setTilt(45) gives 2.5D building footprints at z≥17.
+      map.setMapTypeId("roadmap");
+      map.setTilt(45);
+    } else {
+      map.setMapTypeId("roadmap");
+      map.setTilt(0);
+    }
+  }, [map, mode]);
+  return null;
 }
 
 function LoadingSpinner() {
@@ -276,9 +369,47 @@ function LoadingSpinner() {
   );
 }
 
+const CLEAN_STYLES: google.maps.MapTypeStyle[] = [
+  { elementType: "geometry", stylers: [{ color: "#f7f3ee" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#f7f3ee" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#8b847c" }] },
+  { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
+  {
+    featureType: "administrative.neighborhood",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#a8a29e" }],
+  },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ece7e0" }] },
+  { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#e5ddd2" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#d8cfc0" }] },
+  {
+    featureType: "road.local",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#b5aea4" }],
+  },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#b9cdd9" }] },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#5d7382" }],
+  },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#d9e4c8" }] },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#6b7a5a" }],
+  },
+  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+  { featureType: "poi.attraction", elementType: "labels.text", stylers: [{ visibility: "off" }] },
+  { featureType: "transit", stylers: [{ visibility: "off" }] },
+  { featureType: "transit.station", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+];
+
 export default function MapComponent({ places, selectedPlace, onSelectPlace, isFavorite }: MapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-  const [mapLoaded, setMapLoaded] = useState(false);
+  const [mapMode, setMapMode] = useState<MapMode>("clean");
+  const homeHotel = places.find((p) => p.isHomeHotel);
 
   if (!apiKey) {
     return (
@@ -295,43 +426,32 @@ export default function MapComponent({ places, selectedPlace, onSelectPlace, isF
   }
 
   return (
-    <>
-      {!mapLoaded && <LoadingSpinner />}
-      <div className="fixed top-[68px] md:top-[72px] left-0 right-0 bottom-0 z-0">
-        <APIProvider apiKey={apiKey} onLoad={() => setMapLoaded(true)}>
-          <GoogleMap
-            defaultCenter={PRAGUE_CENTER}
-            defaultZoom={13}
-            gestureHandling="greedy"
-            disableDefaultUI={false}
-            mapTypeControl={false}
-            zoomControl={true}
-            streetViewControl={false}
-            fullscreenControl={true}
-            className="w-full h-full"
-            styles={[
-              { elementType: "geometry", stylers: [{ color: "#f5f0eb" }] },
-              { elementType: "labels.text.stroke", stylers: [{ color: "#f5f0eb" }] },
-              { elementType: "labels.text.fill", stylers: [{ color: "#78716c" }] },
-              { featureType: "road", elementType: "geometry", stylers: [{ color: "#e7e5e4" }] },
-              { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#d6d3d1" }] },
-              { featureType: "water", elementType: "geometry", stylers: [{ color: "#c4d5e3" }] },
-              { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#dde8d0" }] },
-              { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
-              { featureType: "transit.station", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-            ]}
-          >
-            <MarkerLayer
-              places={places}
-              selectedPlace={selectedPlace}
-              onSelectPlace={onSelectPlace}
-              isFavorite={isFavorite}
-            />
-            <UserLocationDot />
-            <MapTypeToggle />
-          </GoogleMap>
-        </APIProvider>
-      </div>
-    </>
+    <div className="fixed top-[68px] md:top-[72px] left-0 right-0 bottom-0 z-0">
+      <GoogleMap
+        defaultCenter={PRAGUE_CENTER}
+        defaultZoom={13}
+        gestureHandling="greedy"
+        disableDefaultUI={false}
+        mapTypeControl={false}
+        zoomControl={true}
+        streetViewControl={false}
+        fullscreenControl={true}
+        className="w-full h-full"
+        styles={mapMode === "clean" ? CLEAN_STYLES : undefined}
+      >
+        <MarkerLayer
+          places={places}
+          selectedPlace={selectedPlace}
+          onSelectPlace={onSelectPlace}
+          isFavorite={isFavorite}
+        />
+        <MapModeApplier mode={mapMode} />
+        <UserLocationDot />
+        <MapTypeToggle mode={mapMode} onChange={setMapMode} />
+        <FindHomeButton home={homeHotel} />
+      </GoogleMap>
+    </div>
   );
 }
+
+export { LoadingSpinner };
