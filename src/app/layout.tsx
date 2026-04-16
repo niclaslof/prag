@@ -54,6 +54,17 @@ export default function RootLayout({
       <body className="min-h-screen bg-paper text-ink antialiased dark:bg-stone-950 dark:text-stone-100">
         {children}
         <Analytics />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js');
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

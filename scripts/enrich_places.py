@@ -81,6 +81,7 @@ FIELD_MASK = ",".join(
         "places.editorialSummary",
         "places.generativeSummary",
         "places.photos",
+        "places.reviews",
     ]
 )
 
@@ -226,6 +227,31 @@ def price_to_num(pl: str | None) -> int | None:
     }.get(pl)
 
 
+def convert_reviews(raw_reviews: list[dict] | None) -> list[dict] | None:
+    """Extract up to 5 reviews from the Places API response."""
+    if not raw_reviews:
+        return None
+    reviews: list[dict] = []
+    for r in raw_reviews[:5]:
+        author = r.get("authorAttribution") or {}
+        text_obj = r.get("text") or {}
+        text = text_obj.get("text", "") if isinstance(text_obj, dict) else str(text_obj)
+        if not text:
+            # Also try originalText
+            orig = r.get("originalText") or {}
+            text = orig.get("text", "") if isinstance(orig, dict) else str(orig)
+        if not text:
+            continue
+        reviews.append({
+            "authorName": author.get("displayName", ""),
+            "authorPhoto": author.get("photoUri", ""),
+            "rating": r.get("rating", 0),
+            "text": text,
+            "relativeTime": r.get("relativePublishTimeDescription", ""),
+        })
+    return reviews if reviews else None
+
+
 def render_ts(enrichment: dict[str, dict]) -> str:
     """Render enrichment.generated.ts as a typed lookup."""
     lines = [
@@ -244,6 +270,7 @@ def render_ts(enrichment: dict[str, dict]) -> str:
         '    | "hours"',
         '    | "aiDescription"',
         '    | "photoUrl"',
+        '    | "reviews"',
         "  >",
         ">;",
         "",
@@ -336,6 +363,11 @@ def main() -> int:
                 summary = ed.get("text", "") or ""
         if summary:
             entry["aiDescription"] = summary
+
+        # Reviews
+        reviews = convert_reviews(result.get("reviews"))
+        if reviews:
+            entry["reviews"] = reviews
 
         # Photo
         photos = result.get("photos") or []
