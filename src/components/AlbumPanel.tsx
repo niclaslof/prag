@@ -139,11 +139,10 @@ interface Comment {
 }
 
 function LightboxWithComments({
-  photo, photoIdx, totalPhotos, onClose, onPrev, onNext, onTouchStart, onTouchEnd, onGoTo,
+  photos: allPhotos, photoIdx, onClose, onPrev, onNext, onTouchStart, onTouchEnd, onGoTo,
 }: {
-  photo: PhotoItem;
+  photos: PhotoItem[];
   photoIdx: number;
-  totalPhotos: number;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -159,6 +158,20 @@ function LightboxWithComments({
     typeof window !== "undefined" ? localStorage.getItem("walliprag-name") || "" : ""
   );
   const [sending, setSending] = useState(false);
+
+  const photo = allPhotos[photoIdx];
+  const totalPhotos = allPhotos.length;
+
+  // Preload prev + next images for instant transitions
+  useEffect(() => {
+    [-1, 1, 2].forEach((offset) => {
+      const idx = photoIdx + offset;
+      if (idx >= 0 && idx < allPhotos.length) {
+        const img = new window.Image();
+        img.src = allPhotos[idx].fullUrl;
+      }
+    });
+  }, [photoIdx, allPhotos]);
 
   const fetchComments = useCallback(async () => {
     setLoadingComments(true);
@@ -217,15 +230,35 @@ function LightboxWithComments({
           >
             💬 {comments.length || ""}
           </button>
+          <a
+            href={photo.fullUrl}
+            download={photo.name}
+            onClick={(e) => e.stopPropagation()}
+            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
+            title="Download"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </a>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg cursor-pointer">✕</button>
         </div>
       </div>
 
-      {/* Photo area */}
-      <div className="flex-1 flex items-center justify-center relative min-h-0" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {/* Photo area — only renders ±1 images for performance at any scale */}
+      <div className="flex-1 relative min-h-0 overflow-hidden" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {photoIdx > 0 && <button onClick={(e) => { e.stopPropagation(); onPrev(); }} className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white text-2xl flex items-center justify-center cursor-pointer z-10">‹</button>}
         {photoIdx < totalPhotos - 1 && <button onClick={(e) => { e.stopPropagation(); onNext(); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white text-2xl flex items-center justify-center cursor-pointer z-10">›</button>}
-        <Image key={photo.id} src={photo.fullUrl} alt={photo.name} width={1600} height={1200} className="max-w-[95vw] max-h-full object-contain" unoptimized />
+        {/* Only renders ±1 for perf. Center slot is pinch-zoomable. */}
+        <div className="flex h-full w-[300%] transition-transform duration-200 ease-out will-change-transform" style={{ transform: "translateX(-33.333%)" }}>
+          {[-1, 0, 1].map((offset) => {
+            const idx = photoIdx + offset;
+            const p = idx >= 0 && idx < totalPhotos ? allPhotos[idx] : null;
+            return (
+              <div key={offset} className="w-1/3 flex items-center justify-center overflow-auto" style={{ touchAction: offset === 0 ? "pinch-zoom" : "none" }}>
+                {p && <Image src={p.fullUrl} alt={p.name} width={1600} height={1200} className="max-w-[95vw] max-h-full object-contain" unoptimized />}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Photo info + dots */}
@@ -524,9 +557,8 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
       {/* Fullscreen swipe lightbox with comments */}
       {cur && (
         <LightboxWithComments
-          photo={cur}
+          photos={photos}
           photoIdx={lightboxIdx!}
-          totalPhotos={photos.length}
           onClose={() => setLightboxIdx(null)}
           onPrev={goPrev}
           onNext={goNext}
