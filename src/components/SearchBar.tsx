@@ -79,33 +79,44 @@ export default function SearchBar({
 
   return (
     <div className="fixed top-[34px] md:top-[38px] left-0 right-0 z-40">
-      {/* Main bar */}
-      <div className="bg-paper/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200/80 dark:border-stone-800 px-2 py-1 md:px-4 md:py-1.5">
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
-          {/* Search */}
+      {/* Search row */}
+      <div className="bg-paper/95 dark:bg-stone-900/95 backdrop-blur-md border-b border-stone-200/60 dark:border-stone-800 px-2 py-1.5 md:px-4">
+        <div className="flex items-center gap-2">
           <input
             type="text"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Search Prague…"
-            className="px-3 py-1.5 rounded-full border border-stone-300 dark:border-stone-700 text-[0.68rem] md:text-xs w-32 md:w-52 bg-white dark:bg-stone-800 dark:text-stone-100 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all shrink-0 placeholder:text-stone-400"
+            placeholder="Search places, districts…"
+            className="flex-1 min-w-0 px-3 py-1.5 rounded-full border border-stone-300 dark:border-stone-700 text-xs bg-white dark:bg-stone-800 dark:text-stone-100 outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all placeholder:text-stone-400"
           />
-
-          {/* Favorites */}
           {favoriteCount > 0 && (
             <button
               onClick={onToggleFavorites}
-              className={`${pill} ${
+              className={`${pill} shrink-0 ${
                 showFavoritesOnly
                   ? "bg-amber-500 border-amber-500 text-white"
-                  : "bg-white dark:bg-stone-800 border-amber-300 text-amber-600"
+                  : "bg-white dark:bg-stone-800 border-amber-300 dark:border-amber-700 text-amber-600 dark:text-amber-400"
               }`}
             >
-              ♥{favoriteCount}
+              ♥ {favoriteCount}
             </button>
           )}
+          <button
+            onClick={() => setFiltersOpen(!filtersOpen)}
+            className={`${pill} shrink-0 ${
+              advancedCount > 0
+                ? "bg-stone-800 dark:bg-stone-200 border-stone-800 dark:border-stone-200 text-white dark:text-stone-900"
+                : "bg-white dark:bg-stone-800 border-stone-300 dark:border-stone-600 text-stone-500 dark:text-stone-400"
+            }`}
+          >
+            {advancedCount > 0 ? `⚙ ${advancedCount}` : "⚙"}
+          </button>
+        </div>
+      </div>
 
-          {/* Category pills */}
+      {/* Category pills row */}
+      <div className="bg-paper/90 dark:bg-stone-900/90 backdrop-blur-sm px-2 py-1 md:px-4 border-b border-stone-200/60 dark:border-stone-800">
+        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
           {CATEGORY_FILTERS.filter((c) => availableCategories.includes(c)).map((c) => {
             const meta = CATEGORIES[c];
             const on = activeCategories.includes(c);
@@ -123,18 +134,6 @@ export default function SearchBar({
               </button>
             );
           })}
-
-          {/* Filter toggle */}
-          <button
-            onClick={() => setFiltersOpen(!filtersOpen)}
-            className={`${pill} ml-auto shrink-0 ${
-              advancedCount > 0
-                ? "bg-stone-800 border-stone-800 text-white"
-                : "bg-white dark:bg-stone-800 border-stone-300 text-stone-500"
-            }`}
-          >
-            {advancedCount > 0 ? `Filters (${advancedCount})` : "Filters ▾"}
-          </button>
         </div>
       </div>
 

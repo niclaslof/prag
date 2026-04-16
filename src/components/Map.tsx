@@ -520,7 +520,7 @@ function MapTypeToggle({ mode, onChange }: MapTypeToggleProps) {
   const label = mode === "clean" ? "Map" : mode === "terrain" ? "Terrain" : "Sat";
 
   return (
-    <div className="fixed top-[74px] md:top-[80px] right-2 z-10">
+    <div className="fixed top-[100px] md:top-[106px] right-2 z-10">
       {open ? (
         <div className="bg-white dark:bg-stone-900 shadow-lg rounded-xl p-1 flex flex-col gap-0.5 border border-stone-200 dark:border-stone-700 animate-in">
           {(["clean", "terrain", "satellite"] as MapMode[]).map((m) => (
@@ -571,7 +571,7 @@ function MapModeApplier({ mode }: { mode: MapMode }) {
 
 function LoadingSpinner() {
   return (
-    <div className="fixed top-[68px] md:top-[72px] left-0 right-0 bottom-0 flex items-center justify-center bg-paper z-10">
+    <div className="fixed top-[98px] md:top-[102px] left-0 right-0 bottom-0 flex items-center justify-center bg-paper z-10">
       <div className="text-center">
         <div className="w-12 h-12 border-4 border-stone-200 border-t-accent rounded-full animate-spin mx-auto mb-4" />
         <p className="text-sm text-warm font-medium">Loading map...</p>
@@ -672,7 +672,7 @@ export default function MapComponent({
 
   if (!apiKey) {
     return (
-      <div className="fixed top-[68px] md:top-[72px] left-0 right-0 bottom-0 flex items-center justify-center bg-stone-100 dark:bg-stone-950">
+      <div className="fixed top-[98px] md:top-[102px] left-0 right-0 bottom-0 flex items-center justify-center bg-stone-100 dark:bg-stone-950">
         <div className="text-center p-8 bg-white dark:bg-stone-900 rounded-xl shadow-lg max-w-md">
           <p className="text-lg font-semibold mb-2 text-ink">Google Maps API key missing</p>
           <p className="text-sm text-warm">
@@ -686,7 +686,7 @@ export default function MapComponent({
 
   return (
     <div
-      className="fixed top-[68px] md:top-[72px] left-0 right-0 z-0"
+      className="fixed top-[98px] md:top-[102px] left-0 right-0 z-0"
       style={{
         bottom: "calc(56px + env(safe-area-inset-bottom))",
       }}
