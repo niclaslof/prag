@@ -421,10 +421,6 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
         const compressed = await compressImage(file);
         const fd = new FormData();
         fd.append("file", compressed);
-        // Send original for full-res download (only if bigger than compressed)
-        if (file.size > compressed.size) {
-          fd.append("original", file);
-        }
         if (gps) {
           fd.append("lat", String(gps.lat));
           fd.append("lng", String(gps.lng));
