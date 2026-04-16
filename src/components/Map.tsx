@@ -5,6 +5,7 @@ import { Map as GoogleMap, useMap } from "@vis.gl/react-google-maps";
 import { MarkerClusterer } from "@googlemaps/markerclusterer";
 import { Place, CATEGORIES, PRAGUE_CENTER } from "@/lib/types";
 import { useIsDark } from "@/lib/useDarkMode";
+import { PeopleLayer, LocationSharingToggle } from "./LiveLocation";
 
 interface MapProps {
   places: Place[];
@@ -856,6 +857,8 @@ export default function MapComponent({
           </svg>
         </button>
         <ResetZoomButton places={places} />
+        <PeopleLayer />
+        <LocationSharingToggle />
       </GoogleMap>
     </div>
   );
