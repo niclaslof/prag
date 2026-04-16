@@ -61,6 +61,7 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const [storage, setStorage] = useState<{ usedMB: number; limitMB: number; percent: number } | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState("");
   const [showUploadSheet, setShowUploadSheet] = useState(false);
@@ -88,7 +89,9 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
     try {
       const res = await fetch("/api/album");
       if (res.ok) {
-        for (const p of (await res.json()).photos || []) {
+        const data = await res.json();
+        if (data.storage) setStorage(data.storage);
+        for (const p of data.photos || []) {
           all.push({ id: `b-${p.url}`, name: p.name, thumbnailUrl: p.url, fullUrl: p.url, date: p.uploadedAt, source: "blob" });
         }
       }
@@ -164,7 +167,20 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
           <div>
             <p className="text-[0.6rem] uppercase tracking-[0.2em] text-warm mb-1">Shared photo album</p>
             <h2 className="font-[family-name:var(--font-playfair)] text-xl font-bold">Walli Prag Album</h2>
-            <p className="text-[0.68rem] text-warm mt-0.5">{photos.length > 0 ? `${photos.length} photo${photos.length === 1 ? "" : "s"} · ~500 max` : "Upload your trip photos!"}</p>
+            <p className="text-[0.68rem] text-warm mt-0.5">
+              {photos.length > 0
+                ? `${photos.length} photo${photos.length === 1 ? "" : "s"}`
+                : "Upload your trip photos!"}
+              {storage && ` · ${storage.usedMB} / ${storage.limitMB} MB (${storage.percent}%)`}
+            </p>
+            {storage && (
+              <div className="mt-1.5 w-full h-1 rounded-full bg-white/20 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${storage.percent > 90 ? "bg-red-400" : storage.percent > 70 ? "bg-amber-400" : "bg-green-400"}`}
+                  style={{ width: `${Math.min(storage.percent, 100)}%` }}
+                />
+              </div>
+            )}
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-lg cursor-pointer">✕</button>
         </div>

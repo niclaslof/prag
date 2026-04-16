@@ -42,7 +42,6 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   const { blobs } = await list({ prefix: "album/" });
 
-  // All files in album/ are images (validated on upload) — don't filter by extension
   const photos = blobs
     .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
     .map((b) => ({
@@ -52,5 +51,16 @@ export async function GET() {
       size: b.size,
     }));
 
-  return NextResponse.json({ photos });
+  const totalBytes = blobs.reduce((sum, b) => sum + b.size, 0);
+  const limitBytes = 500 * 1024 * 1024; // 500 MB free tier
+
+  return NextResponse.json({
+    photos,
+    storage: {
+      usedBytes: totalBytes,
+      usedMB: Math.round(totalBytes / 1024 / 1024 * 10) / 10,
+      limitMB: 500,
+      percent: Math.round((totalBytes / limitBytes) * 100),
+    },
+  });
 }
