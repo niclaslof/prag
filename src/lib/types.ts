@@ -25,6 +25,14 @@ export interface OpeningHours {
   close: string;
 }
 
+export interface PlaceReview {
+  authorName: string;
+  authorPhoto?: string;
+  rating: number;
+  text: string;
+  relativeTime: string;
+}
+
 export interface Place {
   id: number;
   /** Google Place ID (if sourced via Places API) */
@@ -58,6 +66,8 @@ export interface Place {
   isHomeHotel?: boolean;
   /** Suitable for kids / families (playground, interactive, easy access, safe). */
   isKidFriendly?: boolean;
+  /** Google reviews (up to 5). */
+  reviews?: PlaceReview[];
 }
 
 export type CategoryFilter = Category | "all";

@@ -310,6 +310,47 @@ export default function PlacePanel({
             )}
           </div>
 
+          {/* Reviews */}
+          {place.reviews && place.reviews.length > 0 && (
+            <div className="mb-5">
+              <h3 className="text-[0.62rem] uppercase tracking-[0.2em] text-warm font-bold mb-3">
+                Reviews
+              </h3>
+              <div className="space-y-3">
+                {place.reviews.map((r, i) => (
+                  <div
+                    key={i}
+                    className="rounded-xl bg-stone-50 dark:bg-stone-800/50 border border-stone-200 dark:border-stone-800 p-3"
+                  >
+                    <div className="flex items-center gap-2 mb-1.5">
+                      {r.authorPhoto && (
+                        <img
+                          src={r.authorPhoto}
+                          alt=""
+                          className="w-6 h-6 rounded-full object-cover"
+                          loading="lazy"
+                        />
+                      )}
+                      <span className="text-[0.72rem] font-semibold text-ink truncate">
+                        {r.authorName}
+                      </span>
+                      <span className="ml-auto flex items-center gap-0.5 text-[0.65rem] shrink-0">
+                        <span className="text-amber-500">{"★".repeat(r.rating)}</span>
+                        <span className="text-stone-300 dark:text-stone-600">{"★".repeat(5 - r.rating)}</span>
+                      </span>
+                    </div>
+                    <p className="text-[0.72rem] text-warm leading-relaxed line-clamp-4">
+                      {r.text}
+                    </p>
+                    {r.relativeTime && (
+                      <p className="text-[0.6rem] text-warm/60 mt-1.5">{r.relativeTime}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex flex-wrap gap-2">
             <button
