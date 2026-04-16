@@ -14,6 +14,7 @@ interface MapProps {
   directionsTarget?: Place | null;
   directionsMode?: DirectionsMode;
   onDirectionsResult?: (summary: DirectionsSummary | null) => void;
+  photoMarkers?: boolean;
 }
 
 export type DirectionsMode = "walking" | "transit" | "driving" | "bicycling";
@@ -32,7 +33,7 @@ export interface DirectionsSummary {
   fare?: string;
 }
 
-function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite }: MapProps) {
+function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite, photoMarkers }: MapProps) {
   const map = useMap();
   const markersRef = useRef<google.maps.Marker[]>([]);
   const clustererRef = useRef<MarkerClusterer | null>(null);
@@ -97,6 +98,88 @@ function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite }: MapPr
       `fill="url(#star)" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>` +
       `</svg>`;
 
+    /** Build a photo thumbnail marker as a canvas-drawn icon URL. */
+    const makePhotoIcon = (place: Place): Promise<google.maps.Icon> => {
+      const SIZE = 52;
+      const BORDER = 3;
+      const meta = CATEGORIES[place.category];
+      return new Promise((resolve) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = SIZE;
+        canvas.height = SIZE;
+        const ctx = canvas.getContext("2d")!;
+
+        // Clip to rounded rect
+        const r = 10;
+        ctx.beginPath();
+        ctx.moveTo(r, 0);
+        ctx.lineTo(SIZE - r, 0);
+        ctx.quadraticCurveTo(SIZE, 0, SIZE, r);
+        ctx.lineTo(SIZE, SIZE - r);
+        ctx.quadraticCurveTo(SIZE, SIZE, SIZE - r, SIZE);
+        ctx.lineTo(r, SIZE);
+        ctx.quadraticCurveTo(0, SIZE, 0, SIZE - r);
+        ctx.lineTo(0, r);
+        ctx.quadraticCurveTo(0, 0, r, 0);
+        ctx.closePath();
+
+        // Border fill
+        ctx.fillStyle = place.isTopPick ? "#f59e0b" : meta.color;
+        ctx.fill();
+
+        // Inner clip for photo
+        ctx.save();
+        const inner = BORDER;
+        const innerSize = SIZE - BORDER * 2;
+        const ir = r - 2;
+        ctx.beginPath();
+        ctx.moveTo(inner + ir, inner);
+        ctx.lineTo(inner + innerSize - ir, inner);
+        ctx.quadraticCurveTo(inner + innerSize, inner, inner + innerSize, inner + ir);
+        ctx.lineTo(inner + innerSize, inner + innerSize - ir);
+        ctx.quadraticCurveTo(inner + innerSize, inner + innerSize, inner + innerSize - ir, inner + innerSize);
+        ctx.lineTo(inner + ir, inner + innerSize);
+        ctx.quadraticCurveTo(inner, inner + innerSize, inner, inner + innerSize - ir);
+        ctx.lineTo(inner, inner + ir);
+        ctx.quadraticCurveTo(inner, inner, inner + ir, inner);
+        ctx.closePath();
+        ctx.clip();
+
+        // Try loading the photo
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          // Draw photo cropped to square
+          const s = Math.min(img.width, img.height);
+          ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s,
+            inner, inner, innerSize, innerSize);
+          ctx.restore();
+          resolve({
+            url: canvas.toDataURL("image/png"),
+            scaledSize: new google.maps.Size(SIZE, SIZE),
+            anchor: new google.maps.Point(SIZE / 2, SIZE / 2),
+          });
+        };
+        img.onerror = () => {
+          // Fallback: solid color with emoji text
+          ctx.fillStyle = meta.color;
+          ctx.fillRect(inner, inner, innerSize, innerSize);
+          ctx.restore();
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "18px system-ui";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(meta.emoji, SIZE / 2, SIZE / 2);
+          resolve({
+            url: canvas.toDataURL("image/png"),
+            scaledSize: new google.maps.Size(SIZE, SIZE),
+            anchor: new google.maps.Point(SIZE / 2, SIZE / 2),
+          });
+        };
+        img.src = `/images/places/${place.id}.jpg`;
+      });
+    };
+
     const markers = places.map((place) => {
       const meta = CATEGORIES[place.category];
       const fav = isFavorite?.(place.category, place.id) ?? false;
@@ -131,6 +214,11 @@ function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite }: MapPr
         },
         optimized: true,
       });
+
+      // If photo mode, async-replace the pin with a photo thumbnail
+      if (photoMarkers && !place.isHomeHotel) {
+        makePhotoIcon(place).then((icon) => marker.setIcon(icon));
+      }
 
       marker.addListener("click", () => onSelectPlace(place));
       return marker;
@@ -205,7 +293,7 @@ function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite }: MapPr
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
     };
-  }, [map, places, onSelectPlace, isFavorite]);
+  }, [map, places, onSelectPlace, isFavorite, photoMarkers]);
 
   // Highlight selected marker by scaling it up
   useEffect(() => {
@@ -665,6 +753,7 @@ export default function MapComponent({
 }: MapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const [mapMode, setMapMode] = useState<MapMode>("clean");
+  const [photoMarkers, setPhotoMarkers] = useState(false);
   const homeHotel = places.find((p) => p.isHomeHotel);
   const isDark = useIsDark();
   const styles =
@@ -709,6 +798,7 @@ export default function MapComponent({
           selectedPlace={selectedPlace}
           onSelectPlace={onSelectPlace}
           isFavorite={isFavorite}
+          photoMarkers={photoMarkers}
         />
         <DirectionsLayer
           target={directionsTarget}
@@ -719,6 +809,24 @@ export default function MapComponent({
         <UserLocationDot />
         <MapTypeToggle mode={mapMode} onChange={setMapMode} />
         <FindHomeButton home={homeHotel} />
+        {/* Photo markers toggle */}
+        <button
+          onClick={() => setPhotoMarkers((v) => !v)}
+          className={`fixed left-3 z-10 w-11 h-11 rounded-full shadow-lg border flex items-center justify-center cursor-pointer transition-all ${
+            photoMarkers
+              ? "bg-accent text-white border-accent shadow-[0_4px_16px_rgba(180,83,9,0.4)]"
+              : "bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
+          }`}
+          style={{ bottom: "calc(132px + env(safe-area-inset-bottom))" }}
+          title={photoMarkers ? "Show pin markers" : "Show photo markers"}
+          aria-label="Toggle photo markers"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <path d="m21 15-5-5L5 21" />
+          </svg>
+        </button>
         <ResetZoomButton places={places} />
       </GoogleMap>
     </div>
