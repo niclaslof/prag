@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Category, CATEGORIES } from "@/lib/types";
 import { WeatherChip } from "./Weather";
 
@@ -21,16 +22,21 @@ export default function Header({
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-ink/95 text-paper backdrop-blur-md border-b border-white/5">
       <div className="flex items-center justify-between px-3 py-1.5 md:px-5 md:py-2 gap-3">
-        {/* Hamburger + Logo */}
-        <div className="flex items-center gap-2">
+        {/* Tommy avatar + Logo */}
+        <div className="flex items-center gap-2.5">
           <button
             onClick={onOpenMenu}
-            className="w-8 h-8 rounded-lg hover:bg-white/10 flex flex-col items-center justify-center gap-[3px] cursor-pointer transition-colors"
+            className="relative w-9 h-9 rounded-full overflow-hidden ring-2 ring-amber-500/70 hover:ring-amber-400 transition-all cursor-pointer shrink-0 shadow-lg"
             aria-label="Open menu"
           >
-            <span className="w-4 h-[1.5px] bg-paper rounded-full" />
-            <span className="w-4 h-[1.5px] bg-paper rounded-full" />
-            <span className="w-4 h-[1.5px] bg-paper rounded-full" />
+            <Image
+              src="/icon-512.png"
+              alt="Tommy Wall"
+              width={36}
+              height={36}
+              className="w-full h-full object-cover"
+              priority
+            />
           </button>
           <h1 className="font-[family-name:var(--font-playfair)] text-base md:text-lg font-semibold tracking-tight flex items-center gap-1.5">
             <span>Walli</span>
