@@ -78,9 +78,9 @@ export default function SearchBar({
     (kidFriendlyOnly ? 1 : 0);
 
   return (
-    <div className="fixed top-[38px] md:top-[44px] left-0 right-0 z-40">
+    <div className="fixed top-[42px] md:top-[48px] left-0 right-0 z-40">
       {/* Category pills row */}
-      <div className="bg-paper/90 dark:bg-stone-900/90 backdrop-blur-sm px-2 py-1 md:px-4 border-b border-stone-200/60 dark:border-stone-800">
+      <div className="bg-paper/90 dark:bg-stone-900/90 backdrop-blur-sm px-2 py-1.5 md:px-4 border-b border-stone-200/60 dark:border-stone-800">
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
           {CATEGORY_FILTERS.filter((c) => availableCategories.includes(c)).map((c) => {
             const meta = CATEGORIES[c];
