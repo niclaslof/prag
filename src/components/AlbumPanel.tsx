@@ -11,6 +11,7 @@ interface PhotoItem {
   name: string;
   thumbnailUrl: string;
   fullUrl: string;
+  fullResUrl: string; // original resolution for download
   date: string;
   source: "drive" | "blob";
 }
@@ -232,7 +233,7 @@ function LightboxWithComments({
             💬 {comments.length || ""}
           </button>
           <a
-            href={photo.source === "drive" ? photo.fullUrl.replace("=w1600", "=w4000") : photo.fullUrl}
+            href={photo.fullResUrl}
             download={photo.name}
             target="_blank"
             rel="noopener noreferrer"
@@ -363,7 +364,7 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
         const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&key=${API_KEY}&fields=files(id,name,createdTime)&orderBy=createdTime desc&pageSize=100`);
         if (res.ok) {
           for (const f of (await res.json()).files || []) {
-            all.push({ id: `d-${f.id}`, name: f.name, thumbnailUrl: `https://lh3.googleusercontent.com/d/${f.id}=w400`, fullUrl: `https://lh3.googleusercontent.com/d/${f.id}=w1600`, date: f.createdTime, source: "drive" });
+            all.push({ id: `d-${f.id}`, name: f.name, thumbnailUrl: `https://lh3.googleusercontent.com/d/${f.id}=w400`, fullUrl: `https://lh3.googleusercontent.com/d/${f.id}=w1600`, fullResUrl: `https://lh3.googleusercontent.com/d/${f.id}=w4000`, date: f.createdTime, source: "drive" });
           }
         }
       } catch { /* ok */ }
@@ -375,7 +376,7 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
         const data = await res.json();
         if (data.storage) setStorage(data.storage);
         for (const p of data.photos || []) {
-          all.push({ id: `b-${p.url}`, name: p.name, thumbnailUrl: p.url, fullUrl: p.url, date: p.uploadedAt, source: "blob" });
+          all.push({ id: `b-${p.url}`, name: p.name, thumbnailUrl: p.url, fullUrl: p.url, fullResUrl: p.fullResUrl || p.url, date: p.uploadedAt, source: "blob" });
         }
       }
     } catch { /* ok */ }
@@ -416,11 +417,14 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
         const exifGPS = await extractExifGPS(file);
         const gps = exifGPS || liveGPS;
 
-        setUploadProgress(`Compressing ${uploaded + 1}/${arr.length}…`);
-        const compressed = await compressImage(file);
         setUploadProgress(`Uploading ${uploaded + 1}/${arr.length}…`);
+        const compressed = await compressImage(file);
         const fd = new FormData();
         fd.append("file", compressed);
+        // Send original for full-res download (only if bigger than compressed)
+        if (file.size > compressed.size) {
+          fd.append("original", file);
+        }
         if (gps) {
           fd.append("lat", String(gps.lat));
           fd.append("lng", String(gps.lng));
