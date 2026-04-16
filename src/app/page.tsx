@@ -15,6 +15,7 @@ import Menu from "@/components/Menu";
 import TransportPanel from "@/components/TransportPanel";
 import InfoPanel from "@/components/InfoPanel";
 import AlbumPanel from "@/components/AlbumPanel";
+import SplitPanel from "@/components/SplitPanel";
 import BottomNav from "@/components/BottomNav";
 import DirectionsBar from "@/components/DirectionsBar";
 import { allPlaces } from "@/data/places";
@@ -78,6 +79,7 @@ export default function Home() {
   const [transportOpen, setTransportOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [albumOpen, setAlbumOpen] = useState(false);
+  const [splitOpen, setSplitOpen] = useState(false);
   const [focusFilters, setFocusFilters] = useState(0);
 
   // Interactive in-app directions
@@ -299,6 +301,8 @@ export default function Home() {
 
       <AlbumPanel isOpen={albumOpen} onClose={() => setAlbumOpen(false)} />
 
+      <SplitPanel isOpen={splitOpen} onClose={() => setSplitOpen(false)} />
+
       <DirectionsBar
         target={directionsTarget}
         mode={directionsMode}
@@ -314,7 +318,7 @@ export default function Home() {
         onOpenList={() => setListOpen(true)}
         onOpenTransport={() => setTransportOpen(true)}
         onOpenRoute={() => setRouteOpen(true)}
-        onOpenInfo={() => setInfoOpen(true)}
+        onOpenSplit={() => setSplitOpen(true)}
         onOpenAlbum={() => setAlbumOpen(true)}
         onOpenMenu={() => setMenuOpen(true)}
         listCount={filtered.length}

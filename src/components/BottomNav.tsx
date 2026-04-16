@@ -4,7 +4,7 @@ interface BottomNavProps {
   onOpenList: () => void;
   onOpenTransport: () => void;
   onOpenRoute: () => void;
-  onOpenInfo: () => void;
+  onOpenSplit: () => void;
   onOpenAlbum: () => void;
   onOpenMenu: () => void;
   listCount: number;
@@ -27,7 +27,7 @@ export default function BottomNav({
   onOpenList,
   onOpenTransport,
   onOpenRoute,
-  onOpenInfo,
+  onOpenSplit,
   onOpenAlbum,
   onOpenMenu,
   listCount,
@@ -62,14 +62,15 @@ export default function BottomNav({
       badge: favoriteCount > 0 ? String(favoriteCount) : undefined,
     },
     {
-      id: "transport",
-      label: "Transport",
+      id: "split",
+      label: "Split",
       icon: (
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2 L18 9 L15 9 L15 22 L9 22 L9 9 L6 9 Z" />
+          <line x1="12" y1="1" x2="12" y2="23" />
+          <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
         </svg>
       ),
-      onClick: onOpenTransport,
+      onClick: onOpenSplit,
       accent: true,
     },
     {
