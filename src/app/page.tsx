@@ -14,6 +14,7 @@ import RoutePlanner from "@/components/RoutePlanner";
 import Menu from "@/components/Menu";
 import TransportPanel from "@/components/TransportPanel";
 import InfoPanel from "@/components/InfoPanel";
+import AlbumPanel from "@/components/AlbumPanel";
 import BottomNav from "@/components/BottomNav";
 import DirectionsBar from "@/components/DirectionsBar";
 import { allPlaces } from "@/data/places";
@@ -76,6 +77,7 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [transportOpen, setTransportOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
+  const [albumOpen, setAlbumOpen] = useState(false);
   const [focusFilters, setFocusFilters] = useState(0);
 
   // Interactive in-app directions
@@ -284,6 +286,8 @@ export default function Home() {
 
       <InfoPanel isOpen={infoOpen} onClose={() => setInfoOpen(false)} />
 
+      <AlbumPanel isOpen={albumOpen} onClose={() => setAlbumOpen(false)} />
+
       <DirectionsBar
         target={directionsTarget}
         mode={directionsMode}
@@ -300,6 +304,7 @@ export default function Home() {
         onOpenTransport={() => setTransportOpen(true)}
         onOpenRoute={() => setRouteOpen(true)}
         onOpenInfo={() => setInfoOpen(true)}
+        onOpenAlbum={() => setAlbumOpen(true)}
         onOpenMenu={() => setMenuOpen(true)}
         listCount={filtered.length}
         favoriteCount={favoriteCount}
