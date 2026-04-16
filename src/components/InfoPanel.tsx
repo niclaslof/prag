@@ -1,6 +1,7 @@
 "use client";
 
 import { WeatherCard } from "./Weather";
+import OfflineButton from "./OfflineButton";
 
 interface InfoPanelProps {
   isOpen: boolean;
@@ -110,6 +111,14 @@ export default function InfoPanel({ isOpen, onClose }: InfoPanelProps) {
               Weather
             </h3>
             <WeatherCard />
+          </section>
+
+          {/* Offline */}
+          <section>
+            <h3 className="text-[0.62rem] uppercase tracking-[0.2em] text-warm font-bold mb-2">
+              Offline access
+            </h3>
+            <OfflineButton />
           </section>
 
           {/* Emergency */}
