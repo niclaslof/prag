@@ -1,7 +1,18 @@
 "use client";
 
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { Place, CATEGORIES, PRICE_SYMBOLS } from "@/lib/types";
+
+type SortMode = "rating" | "nearby";
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 interface PlaceListProps {
   places: Place[];
@@ -20,14 +31,38 @@ export default function PlaceList({
   isFavorite,
   onToggleFavorite,
 }: PlaceListProps) {
-  // Sort: top picks first, then by rating (desc), then by name
-  const sorted = [...places].sort((a, b) => {
-    if (a.isTopPick !== b.isTopPick) return a.isTopPick ? -1 : 1;
-    const ra = a.rating ?? 0;
-    const rb = b.rating ?? 0;
-    if (rb !== ra) return rb - ra;
-    return a.name.localeCompare(b.name);
-  });
+  const [sortMode, setSortMode] = useState<SortMode>("rating");
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (sortMode === "nearby" && !userPos && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (p) => setUserPos({ lat: p.coords.latitude, lng: p.coords.longitude }),
+        () => {},
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, [sortMode, userPos]);
+
+  const sorted = useMemo(() => {
+    if (sortMode === "nearby" && userPos) {
+      return [...places].sort((a, b) => {
+        const da = haversineKm(userPos.lat, userPos.lng, a.lat, a.lng);
+        const db = haversineKm(userPos.lat, userPos.lng, b.lat, b.lng);
+        return da - db;
+      });
+    }
+    return [...places].sort((a, b) => {
+      if (a.isTopPick !== b.isTopPick) return a.isTopPick ? -1 : 1;
+      return (b.rating ?? 0) - (a.rating ?? 0) || a.name.localeCompare(b.name);
+    });
+  }, [places, sortMode, userPos]);
+
+  const distanceLabel = (p: Place) => {
+    if (!userPos) return null;
+    const d = haversineKm(userPos.lat, userPos.lng, p.lat, p.lng);
+    return d < 1 ? `${Math.round(d * 1000)} m` : `${d.toFixed(1)} km`;
+  };
 
   return (
     <div
@@ -39,6 +74,26 @@ export default function PlaceList({
         <h3 className="font-semibold text-sm">All places ({places.length})</h3>
         <button onClick={onClose} className="text-warm hover:text-paper text-lg cursor-pointer">
           ✕
+        </button>
+      </div>
+
+      {/* Sort toggle */}
+      <div className="sticky top-[44px] z-10 bg-panel border-b border-stone-200 dark:border-stone-800 px-3 py-2 flex gap-1.5">
+        <button
+          onClick={() => setSortMode("rating")}
+          className={`flex-1 py-1.5 rounded-full text-[0.65rem] font-semibold cursor-pointer transition-colors ${
+            sortMode === "rating" ? "bg-ink text-paper" : "bg-stone-100 dark:bg-stone-800 text-warm"
+          }`}
+        >
+          ★ Top rated
+        </button>
+        <button
+          onClick={() => setSortMode("nearby")}
+          className={`flex-1 py-1.5 rounded-full text-[0.65rem] font-semibold cursor-pointer transition-colors ${
+            sortMode === "nearby" ? "bg-ink text-paper" : "bg-stone-100 dark:bg-stone-800 text-warm"
+          }`}
+        >
+          📍 Near me
         </button>
       </div>
 
@@ -90,7 +145,10 @@ export default function PlaceList({
                     <span>★ {place.rating.toFixed(1)}</span>
                   )}
                   {place.priceLevel !== undefined && place.priceLevel > 0 && (
-                    <span className="text-green-700">{PRICE_SYMBOLS[place.priceLevel]}</span>
+                    <span className="text-green-700 dark:text-green-400">{PRICE_SYMBOLS[place.priceLevel]}</span>
+                  )}
+                  {sortMode === "nearby" && distanceLabel(place) && (
+                    <span className="text-accent font-semibold">{distanceLabel(place)}</span>
                   )}
                 </div>
               </div>

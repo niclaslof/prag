@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { WeatherCard } from "./Weather";
 import OfflineButton from "./OfflineButton";
 
@@ -67,6 +68,73 @@ const TIPS = [
   },
 ];
 
+function CurrencyConverter() {
+  const [sek, setSek] = useState("");
+  const RATE = 2.35; // ~1 SEK = 2.35 CZK (approximate)
+  const czk = sek ? Math.round(parseFloat(sek) * RATE) : 0;
+  return (
+    <div className="rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4">
+      <div className="flex items-center gap-3">
+        <div className="flex-1">
+          <label className="text-[0.6rem] uppercase tracking-wider text-warm font-semibold block mb-1">SEK</label>
+          <input
+            type="number"
+            inputMode="decimal"
+            value={sek}
+            onChange={(e) => setSek(e.target.value)}
+            placeholder="100"
+            className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 text-lg font-bold text-ink outline-none focus:border-accent tabular-nums"
+          />
+        </div>
+        <span className="text-2xl text-warm mt-4">=</span>
+        <div className="flex-1">
+          <label className="text-[0.6rem] uppercase tracking-wider text-warm font-semibold block mb-1">CZK</label>
+          <div className="px-3 py-2 rounded-lg bg-accent/10 border border-accent/30 text-lg font-bold text-accent tabular-nums">
+            {czk || "—"} Kč
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-2 mt-3">
+        {[100, 200, 500, 1000].map((v) => (
+          <button
+            key={v}
+            onClick={() => setSek(String(v))}
+            className="flex-1 py-1.5 rounded-lg bg-stone-100 dark:bg-stone-800 text-[0.68rem] font-semibold text-warm hover:bg-stone-200 dark:hover:bg-stone-700 cursor-pointer transition-colors"
+          >
+            {v} kr
+          </button>
+        ))}
+      </div>
+      <p className="text-[0.6rem] text-warm mt-2">~1 SEK = {RATE} CZK · approximate rate</p>
+    </div>
+  );
+}
+
+function QRShare() {
+  const url = "https://walliprag.vercel.app";
+  // QR via Google Charts API (no dependency needed)
+  const qrUrl = `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(url)}&choe=UTF-8`;
+  return (
+    <div className="rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 p-4 text-center">
+      <img src={qrUrl} alt="QR code for walliprag.vercel.app" width={160} height={160} className="mx-auto rounded-lg" />
+      <p className="text-sm font-semibold text-ink mt-3">Scan to open Walli Prag</p>
+      <p className="text-[0.68rem] text-warm mt-0.5">{url}</p>
+      <button
+        onClick={() => {
+          if (navigator.share) {
+            navigator.share({ title: "Walli Prag", url });
+          } else {
+            navigator.clipboard.writeText(url);
+          }
+        }}
+        className="mt-3 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-light transition-colors cursor-pointer"
+      >
+        Share link
+      </button>
+    </div>
+  );
+}
+
 export default function InfoPanel({ isOpen, onClose }: InfoPanelProps) {
   return (
     <>
@@ -119,6 +187,22 @@ export default function InfoPanel({ isOpen, onClose }: InfoPanelProps) {
               Offline access
             </h3>
             <OfflineButton />
+          </section>
+
+          {/* Currency converter */}
+          <section>
+            <h3 className="text-[0.62rem] uppercase tracking-[0.2em] text-warm font-bold mb-2">
+              Currency converter
+            </h3>
+            <CurrencyConverter />
+          </section>
+
+          {/* Share with family */}
+          <section>
+            <h3 className="text-[0.62rem] uppercase tracking-[0.2em] text-warm font-bold mb-2">
+              Share with family
+            </h3>
+            <QRShare />
           </section>
 
           {/* Emergency */}
