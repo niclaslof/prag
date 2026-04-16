@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { WeatherCard } from "./Weather";
+import OfflineButton from "./OfflineButton";
 
 interface MenuProps {
   isOpen: boolean;
@@ -159,9 +160,10 @@ export default function Menu({
           ))}
         </nav>
 
-        {/* Weather card */}
-        <div className="px-5 pt-2 pb-6">
+        {/* Weather + Offline */}
+        <div className="px-5 pt-2 pb-6 space-y-3">
           <WeatherCard />
+          <OfflineButton />
         </div>
 
         <div className="px-5 py-4 border-t border-stone-200 dark:border-stone-800 text-[0.65rem] text-warm">
