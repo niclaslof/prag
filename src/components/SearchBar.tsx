@@ -113,10 +113,10 @@ export default function SearchBar({
               <button
                 key={c}
                 onClick={() => onCategoryToggle(c)}
-                className={`${pill} ${on ? "text-white" : "text-stone-500 bg-white dark:bg-stone-800"}`}
+                className={`${pill} ${on ? "text-white" : "text-stone-500 bg-white dark:bg-stone-800 border-stone-300 dark:border-stone-600"}`}
                 style={{
                   backgroundColor: on ? meta.color : undefined,
-                  borderColor: on ? meta.color : "#d6d3d1",
+                  borderColor: on ? meta.color : undefined,
                 }}
               >
                 {meta.emoji} {meta.namePlural}

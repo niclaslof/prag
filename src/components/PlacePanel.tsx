@@ -41,18 +41,19 @@ export default function PlacePanel({
   const slides = useMemo(() => {
     if (!place) return [] as { src: string; label: string; unoptimized?: boolean }[];
     const list: { src: string; label: string; unoptimized?: boolean }[] = [];
-    if (place.photoUrl) {
-      list.push({ src: place.photoUrl, label: "Photo", unoptimized: true });
-    }
-    // Try our local scraped image (written by scripts/enrich_places.py)
+    // Local photo first (downloaded by enrich_places.py) — fastest, cached by SW
     list.push({ src: `/images/places/${place.id}.jpg`, label: "Photo" });
+    // External photoUrl as backup (if different from local)
+    if (place.photoUrl) {
+      list.push({ src: place.photoUrl, label: "Photo 2", unoptimized: true });
+    }
     // Street View via Static API
     if (apiKey) {
-      const sv =
-        `https://maps.googleapis.com/maps/api/streetview?size=880x480` +
-        `&location=${place.lat},${place.lng}` +
-        `&fov=80&pitch=5&source=outdoor&key=${apiKey}`;
-      list.push({ src: sv, label: "Street View", unoptimized: true });
+      list.push({
+        src: `https://maps.googleapis.com/maps/api/streetview?size=880x480&location=${place.lat},${place.lng}&fov=80&pitch=5&source=outdoor&key=${apiKey}`,
+        label: "Street View",
+        unoptimized: true,
+      });
     }
     return list;
   }, [place, apiKey]);

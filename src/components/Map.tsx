@@ -265,6 +265,30 @@ function FindHomeButton({ home }: { home?: Place }) {
   );
 }
 
+/** Reset zoom to fit all visible places. */
+function ResetZoomButton({ places }: { places: Place[] }) {
+  const map = useMap();
+  const resetView = () => {
+    if (!map || places.length === 0) return;
+    const bounds = new google.maps.LatLngBounds();
+    places.forEach((p) => bounds.extend({ lat: p.lat, lng: p.lng }));
+    map.fitBounds(bounds, { top: 80, bottom: 80, left: 20, right: 20 });
+  };
+  return (
+    <button
+      onClick={resetView}
+      className="fixed left-3 z-10 w-11 h-11 rounded-full bg-white/95 dark:bg-stone-900/95 backdrop-blur-md shadow-lg border border-stone-200/80 dark:border-stone-700 flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-stone-800 transition-colors"
+      style={{ bottom: "calc(132px + env(safe-area-inset-bottom))" }}
+      title="Zoom to fit all places"
+      aria-label="Reset zoom"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+      </svg>
+    </button>
+  );
+}
+
 /* In-app directions renderer – draws a polyline from user's current location
    (or Prague center as fallback) to the target place and reports a summary
    up to the page. */
@@ -694,6 +718,7 @@ export default function MapComponent({
         <UserLocationDot />
         <MapTypeToggle mode={mapMode} onChange={setMapMode} />
         <FindHomeButton home={homeHotel} />
+        <ResetZoomButton places={places} />
       </GoogleMap>
     </div>
   );

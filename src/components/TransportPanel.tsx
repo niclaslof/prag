@@ -302,7 +302,7 @@ export default function TransportPanel({
 
       {/* Drawer */}
       <aside
-        className={`fixed right-0 top-0 bottom-0 w-[460px] max-w-full bg-panel z-[76] shadow-2xl transition-transform duration-350 ease-out overflow-y-auto ${
+        className={`fixed right-0 top-0 bottom-0 w-[460px] max-w-[95vw] bg-panel z-[76] shadow-2xl transition-transform duration-350 ease-out overflow-y-auto ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}

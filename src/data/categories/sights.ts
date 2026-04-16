@@ -16,7 +16,7 @@ export const sights: Place[] = [
     rating: 4.7,
     userRatingsTotal: 115000,
     website: "https://hrad.cz",
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8e/Pra%C5%BEsk%C3%BD_hrad_od_Pet%C5%99%C3%ADna.jpg/1280px-Pra%C5%BEsk%C3%BD_hrad_od_Pet%C5%99%C3%ADna.jpg",
+
     description: "1,100-year-old seat of Czech kings and presidents. Walk the grounds for free; pay for St. Vitus interior.",
     aiDescription:
       "Guinness-listed as the largest coherent castle complex in the world. Founded around 880 AD, it has been rebuilt in Romanesque, Gothic, Renaissance and Baroque layers by successive kings, emperors and – since 1918 – Czech presidents. The grounds (three courtyards, Golden Lane, palace gardens) are free to wander; the paid 'Circuit B' ticket gets you into St. Vitus Cathedral, the Old Royal Palace, St. George's Basilica and Golden Lane. Go early – security lines build fast after 09:30. Changing of the guard on the hour, with the full fanfare at noon.",
@@ -35,7 +35,6 @@ export const sights: Place[] = [
     priceLevel: 0,
     rating: 4.8,
     userRatingsTotal: 210000,
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Prague_07-2016_View_from_Petrin_Tower_img3.jpg/1280px-Prague_07-2016_View_from_Petrin_Tower_img3.jpg",
     description: "Walk it at sunrise to actually see the statues. By 10am it is a human river.",
     aiDescription:
       "Commissioned by Charles IV in 1357 to replace the earlier Judith Bridge swept away by a flood, Charles Bridge carried every coronation procession from the Old Town to the Castle for over 400 years. The 30 Baroque statues lining the bridge were added between 1683 and 1928 – most are replicas; the originals are preserved at the Lapidárium. The oldest is St. John of Nepomuk (1683), whose polished bronze plaque you'll see everyone rubbing for luck. The bridge is pedestrian-only and absolutely packed from 09:00–20:00 in high season; go at sunrise (around 05:00 in summer) for the postcard shot without crowds.",
@@ -54,7 +53,6 @@ export const sights: Place[] = [
     priceLevel: 0,
     rating: 4.8,
     userRatingsTotal: 180000,
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Old_Town_Square%2C_Prague_-_9425.jpg/1280px-Old_Town_Square%2C_Prague_-_9425.jpg",
     description: "Astronomical Clock, Týn Church, Kinsky Palace and Jan Hus monument – all in one square.",
     aiDescription:
       "The medieval heart of Prague since the 10th century – originally a marketplace, then the stage for executions, royal coronations and the 1918 declaration of independence. Today it bundles the two-spired Church of Our Lady before Týn, the Baroque St. Nicholas Church, the Gothic Old Town Hall with its Astronomical Clock, the rose-pink Kinsky Palace (once home to Kafka's father's haberdashery), and the 1915 Jan Hus memorial in the centre. December holds Prague's best Christmas market; the rest of the year it's reliably packed with horses, tourists and tour groups – come at dawn or after 22:00 for photos.",
@@ -75,7 +73,6 @@ export const sights: Place[] = [
     rating: 4.6,
     userRatingsTotal: 90000,
     website: "https://muzeumprahy.cz",
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Prague_Astronomical_Clock_-_2022.jpg/900px-Prague_Astronomical_Clock_-_2022.jpg",
     description: "The clock itself is free to watch – climb the Old Town Hall tower for a better angle of the square.",
     aiDescription:
       "Mounted on the south wall of the Old Town Hall in 1410, the Orloj is the third-oldest astronomical clock in the world and the oldest still running. The astronomical dial shows the sun, moon and zodiac in medieval Bohemian time; the calendar dial below was painted by Josef Mánes in 1866. On every hour, the 'Walk of the Apostles' windows open and 12 wooden saints parade past Death, Vanity, Greed and The Turk. Climbing the tower (separate 250 CZK ticket) gives you the best angle on the square and a glimpse at the clock's medieval gearing through the glass floor.",
@@ -95,7 +92,6 @@ export const sights: Place[] = [
     priceRange: "Included in Castle ticket",
     rating: 4.8,
     userRatingsTotal: 57000,
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Prag_Veitsdom_Westfassade_3.jpg/900px-Prag_Veitsdom_Westfassade_3.jpg",
     description: "1,000 years in the making. Mucha's stained glass window is the highlight.",
     aiDescription:
       "Construction started in 1344 under Emperor Charles IV but the west façade wasn't finished until 1929 – a cathedral built across 585 years. Inside you'll find the tombs of Czech kings, the silver sarcophagus of St. John of Nepomuk (two tonnes of Baroque metalwork), and the stunning 1931 stained-glass window designed by Alphonse Mucha in the New Archbishop's Chapel. Climb the Great South Tower (287 steps) for a unique view over the castle courtyards.",
@@ -113,7 +109,6 @@ export const sights: Place[] = [
     priceLevel: 0,
     rating: 4.7,
     userRatingsTotal: 12000,
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Praha%2C_T%C3%BDnsk%C3%BD_chr%C3%A1m.jpg/800px-Praha%2C_T%C3%BDnsk%C3%BD_chr%C3%A1m.jpg",
     description: "The twin spires on every Prague postcard. Enter through the arcade on the square.",
     aiDescription:
       "Construction began in 1365 and the twin 80-metre Gothic towers (asymmetrical on purpose – 'Adam' and 'Eve') were finished only in the 16th century. Inside sits the oldest pipe organ in Prague (1673) and the tomb of Tycho Brahe, the Danish astronomer who lost his nose in a duel and died in Prague in 1601. Access to the church is through the arcade of the Týn School on Old Town Square; it's only open for a couple of hours a day outside services.",
@@ -181,7 +176,6 @@ export const sights: Place[] = [
     priceRange: "Tower: 220 CZK",
     rating: 4.7,
     userRatingsTotal: 36000,
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/7/70/Petrin_Tower_Prague.jpg/800px-Petrin_Tower_Prague.jpg",
     description: "Ride the funicular up, climb the 1891 observation tower, walk back down through rose gardens.",
     aiDescription:
       "Petřín is Prague's leafy answer to Paris – rose gardens, orchards and a scaled-down 'Eiffel Tower' built for the 1891 Jubilee Exhibition (63.5 m tall, 299 steps; lift available). On the hill you'll also find a mirror maze, the Baroque Church of St. Lawrence, an observatory, and the 'Hunger Wall' commissioned by Charles IV to employ the poor in 1360. The funicular runs from Újezd tram stop and costs the same as a regular tram ticket.",
@@ -201,7 +195,6 @@ export const sights: Place[] = [
     priceLevel: 0,
     rating: 4.7,
     userRatingsTotal: 27000,
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b0/Vy%C5%A1ehrad_from_Vltava.jpg/1280px-Vy%C5%A1ehrad_from_Vltava.jpg",
     description: "Rotunda, basilica and a cemetery of Czech luminaries on a rocky outcrop south of the center.",
     aiDescription:
       "According to legend, the original seat of Czech rulers before they moved to Prague Castle. Today it's a fortified park perched on a cliff above the Vltava with three key monuments: the 11th-century St. Martin Rotunda (the city's oldest surviving building), the neo-Gothic Basilica of St. Peter & St. Paul with its striking twin spires, and the Vyšehrad Cemetery where Dvořák, Smetana, Mucha and Karel Čapek are buried. Half the locals' favourite sunset spot, with far fewer tourists than Prague Castle.",
@@ -238,7 +231,6 @@ export const sights: Place[] = [
     priceLevel: 0,
     rating: 4.5,
     userRatingsTotal: 19000,
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/Dancing_House_%2835929487491%29.jpg/1024px-Dancing_House_%2835929487491%29.jpg",
     description: "'Fred and Ginger' by Gehry and Milunić (1996) – rooftop bar has the best view back at it.",
     aiDescription:
       "Built in 1996 on a prominent riverside plot that had stood empty since American bombing in 1945, Vlado Milunić and Frank Gehry's 'Dancing House' (originally nicknamed 'Fred and Ginger') was one of the first big statements of post-Velvet-Revolution architecture. The curving glass 'Ginger' tower tapers into the stone 'Fred' like a pair of dancers. Head to the Glass Bar on the top floor for a 360° view and a cocktail among Prague's otherwise uniformly historic skyline.",
@@ -256,7 +248,6 @@ export const sights: Place[] = [
     priceLevel: 0,
     rating: 4.4,
     userRatingsTotal: 26000,
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Lennon_Wall%2C_Prague%2C_2016-10-04_-_01.jpg/1280px-Lennon_Wall%2C_Prague%2C_2016-10-04_-_01.jpg",
     description: "Started as a 1980s protest wall; still repainted constantly. Photos best in morning light.",
     aiDescription:
       "After John Lennon's murder in 1980 this small wall opposite the French embassy was painted with a portrait of him and fragments of Beatles lyrics as a quiet protest against the Communist régime. The secret police repeatedly whitewashed it; students kept returning with fresh paint. It remains a constantly evolving, legal graffiti wall – bring a marker and add your own layer. The Knights of Malta (who own the wall) curate occasional re-launches but otherwise let it evolve.",
@@ -291,7 +282,6 @@ export const sights: Place[] = [
     priceLevel: 0,
     rating: 4.7,
     userRatingsTotal: 18000,
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/9/99/Letna_Park_-_Prague_%2822907485550%29.jpg/1280px-Letna_Park_-_Prague_%2822907485550%29.jpg",
     description: "The view Praguers choose for themselves. Sunset, beer, the whole city unfolding below.",
     aiDescription:
       "A 25 ha plateau across the river from Old Town, Letná offers arguably the best skyline view in Prague – all the bridges, the Castle, the Týn spires. It's where Praguers go to skate, cycle, walk dogs and drink beer at the no-frills Letná Beer Garden (open Apr–Oct, giant wooden tables, cheap Pilsner on tap). The giant metronome on the former Stalin monument plinth is the unofficial gathering point for skateboarders.",
@@ -344,7 +334,6 @@ export const sights: Place[] = [
     rating: 4.5,
     userRatingsTotal: 3200,
     website: "https://radissonhotels.com/en-us/hotels/radisson-blu-prague-alcron",
-    photoUrl: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f4/Hotel_Alcron_Praha_5_%283%29.jpg/1024px-Hotel_Alcron_Praha_5_%283%29.jpg",
     description: "Your home base in Prague – the 1932 Art Deco Radisson Blu Alcron just off Wenceslas Square.",
     aiDescription:
       "Opened in 1932 and meticulously restored, the Alcron is one of Prague's iconic Art Deco addresses. Perfectly placed off Wenceslas Square, a 10-minute walk from Old Town Square and 15 minutes to Charles Bridge. Houses the Alcron Restaurant (already in this map under Restaurants) – the original 24-seat dining room with marble and Thonet chairs.",
