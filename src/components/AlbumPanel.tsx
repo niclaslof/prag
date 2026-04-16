@@ -1,32 +1,26 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import Image from "next/image";
 
 /**
- * Shared photo album backed by a public Google Drive folder.
+ * Shared photo album with two backends:
+ * 1. Google Drive folder (read-only listing via Drive API)
+ * 2. Vercel Blob (direct in-app uploads via /api/album — no login needed)
  *
- * Setup:
- * 1. Create a Google Drive folder and share it as "Anyone with link → Editor"
- * 2. Set NEXT_PUBLIC_ALBUM_FOLDER_ID to the folder ID in .env.local
- * 3. Enable the Google Drive API in Google Cloud Console
- *
- * Users upload photos by opening the Drive folder link (or using the Drive app).
- * This component fetches and displays all images from that folder.
+ * Anyone can upload photos directly from the app — camera or gallery.
  */
 
 const FOLDER_ID = process.env.NEXT_PUBLIC_ALBUM_FOLDER_ID || "";
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
-interface DriveFile {
+interface PhotoItem {
   id: string;
   name: string;
-  thumbnailLink?: string;
-  createdTime: string;
-  imageMediaMetadata?: {
-    width?: number;
-    height?: number;
-  };
+  thumbnailUrl: string;
+  fullUrl: string;
+  date: string;
+  source: "drive" | "blob";
 }
 
 interface AlbumPanelProps {
@@ -34,63 +28,115 @@ interface AlbumPanelProps {
   onClose: () => void;
 }
 
-function driveImageUrl(fileId: string, width = 800): string {
-  return `https://lh3.googleusercontent.com/d/${fileId}=w${width}`;
-}
-
-function driveThumbnailUrl(fileId: string): string {
-  return `https://lh3.googleusercontent.com/d/${fileId}=w400`;
-}
-
 export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
-  const [photos, setPhotos] = useState<DriveFile[]>([]);
+  const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedPhoto, setSelectedPhoto] = useState<DriveFile | null>(null);
+  const [selectedPhoto, setSelectedPhoto] = useState<PhotoItem | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [showUploadSheet, setShowUploadSheet] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const fetchPhotos = useCallback(async () => {
-    if (!FOLDER_ID || !API_KEY) {
-      setError(
-        !FOLDER_ID
-          ? "Album folder not configured. Set NEXT_PUBLIC_ALBUM_FOLDER_ID in .env.local"
-          : "API key missing."
-      );
-      return;
-    }
     setLoading(true);
     setError(null);
-    try {
-      const fields = "files(id,name,thumbnailLink,createdTime,imageMediaMetadata)";
-      const q = encodeURIComponent(
-        `'${FOLDER_ID}' in parents and mimeType contains 'image/' and trashed = false`
-      );
-      const url =
-        `https://www.googleapis.com/drive/v3/files?q=${q}&key=${API_KEY}` +
-        `&fields=${fields}&orderBy=createdTime desc&pageSize=100`;
-      const res = await fetch(url);
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(`Drive API ${res.status}: ${text.slice(0, 200)}`);
+    const allPhotos: PhotoItem[] = [];
+
+    // 1. Google Drive
+    if (FOLDER_ID && API_KEY) {
+      try {
+        const fields = "files(id,name,createdTime)";
+        const q = encodeURIComponent(
+          `'${FOLDER_ID}' in parents and mimeType contains 'image/' and trashed = false`
+        );
+        const url =
+          `https://www.googleapis.com/drive/v3/files?q=${q}&key=${API_KEY}` +
+          `&fields=${fields}&orderBy=createdTime desc&pageSize=100`;
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          for (const f of data.files || []) {
+            allPhotos.push({
+              id: `drive-${f.id}`,
+              name: f.name,
+              thumbnailUrl: `https://lh3.googleusercontent.com/d/${f.id}=w400`,
+              fullUrl: `https://lh3.googleusercontent.com/d/${f.id}=w1600`,
+              date: f.createdTime,
+              source: "drive",
+            });
+          }
+        }
+      } catch {
+        // continue
       }
-      const data = await res.json();
-      setPhotos(data.files || []);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
     }
+
+    // 2. Vercel Blob
+    try {
+      const res = await fetch("/api/album");
+      if (res.ok) {
+        const data = await res.json();
+        for (const p of data.photos || []) {
+          allPhotos.push({
+            id: `blob-${p.url}`,
+            name: p.name,
+            thumbnailUrl: p.url,
+            fullUrl: p.url,
+            date: p.uploadedAt,
+            source: "blob",
+          });
+        }
+      }
+    } catch {
+      // continue
+    }
+
+    allPhotos.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    setPhotos(allPhotos);
+    setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (isOpen && photos.length === 0 && !error) {
+    if (isOpen && photos.length === 0) {
       fetchPhotos();
     }
-  }, [isOpen, photos.length, error, fetchPhotos]);
+  }, [isOpen, photos.length, fetchPhotos]);
 
-  const uploadUrl = FOLDER_ID
-    ? `https://drive.google.com/drive/folders/${FOLDER_ID}?usp=sharing`
-    : "#";
+  const uploadFiles = async (files: FileList | File[]) => {
+    setShowUploadSheet(false);
+    setUploading(true);
+    const fileArr = Array.from(files);
+    setUploadProgress(`Uploading ${fileArr.length} photo${fileArr.length > 1 ? "s" : ""}…`);
+
+    let uploaded = 0;
+    for (const file of fileArr) {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch("/api/album", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          uploaded++;
+          setUploadProgress(`Uploaded ${uploaded}/${fileArr.length}…`);
+        }
+      } catch {
+        // skip
+      }
+    }
+
+    setUploading(false);
+    setUploadProgress("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+    setPhotos([]);
+    fetchPhotos();
+  };
 
   return (
     <>
@@ -135,6 +181,15 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
 
         {/* Body */}
         <div className="px-5 pb-24 pt-4">
+          {uploading && (
+            <div className="flex items-center gap-3 mb-4 px-4 py-3 rounded-xl bg-accent/10 border border-accent/30">
+              <div className="w-5 h-5 border-2 border-accent/30 border-t-accent rounded-full animate-spin shrink-0" />
+              <span className="text-sm text-accent font-medium">
+                {uploadProgress}
+              </span>
+            </div>
+          )}
+
           {loading && (
             <div className="flex items-center gap-3 py-8 text-warm text-sm">
               <div className="w-5 h-5 border-2 border-stone-300 border-t-accent rounded-full animate-spin" />
@@ -148,12 +203,12 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
             </div>
           )}
 
-          {!loading && !error && photos.length === 0 && (
+          {!loading && !error && photos.length === 0 && !uploading && (
             <div className="text-center py-12 text-warm">
-              <span className="text-4xl block mb-3">📸</span>
-              <p className="text-sm font-medium">No photos yet</p>
-              <p className="text-[0.72rem] mt-1">
-                Be the first to upload! Tap &quot;Add your photos&quot; above.
+              <span className="text-5xl block mb-3">📸</span>
+              <p className="text-sm font-semibold mb-1">No photos yet</p>
+              <p className="text-[0.72rem]">
+                Tap the <span className="text-accent font-bold">+</span> button to take a photo or upload one!
               </p>
             </div>
           )}
@@ -168,7 +223,7 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
                   className="relative aspect-square rounded-xl overflow-hidden bg-stone-100 dark:bg-stone-800 cursor-pointer hover:opacity-90 transition-opacity group"
                 >
                   <Image
-                    src={driveThumbnailUrl(photo.id)}
+                    src={photo.thumbnailUrl}
                     alt={photo.name}
                     width={400}
                     height={400}
@@ -185,10 +240,12 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
             </div>
           )}
 
-          {/* Refresh button */}
           {photos.length > 0 && (
             <button
-              onClick={fetchPhotos}
+              onClick={() => {
+                setPhotos([]);
+                fetchPhotos();
+              }}
               className="mt-4 w-full py-2 rounded-lg bg-stone-100 dark:bg-stone-800 text-sm text-warm font-medium hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors cursor-pointer"
             >
               Refresh album
@@ -196,10 +253,29 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
           )}
         </div>
 
+        {/* Hidden file inputs */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => e.target.files && uploadFiles(e.target.files)}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={(e) => e.target.files && uploadFiles(e.target.files)}
+        />
+
         {/* Floating + button */}
         <button
           onClick={() => setShowUploadSheet(true)}
-          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-accent shadow-[0_6px_24px_rgba(180,83,9,0.5)] text-white text-3xl font-light flex items-center justify-center cursor-pointer hover:bg-accent-light hover:scale-105 active:scale-95 transition-all z-[78]"
+          disabled={uploading}
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-accent shadow-[0_6px_24px_rgba(180,83,9,0.5)] text-white text-3xl font-light flex items-center justify-center cursor-pointer hover:bg-accent-light hover:scale-105 active:scale-95 transition-all z-[78] disabled:opacity-60"
           style={{ bottom: "calc(24px + env(safe-area-inset-bottom))" }}
           aria-label="Upload photo"
         >
@@ -219,48 +295,50 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
             >
               <div className="w-10 h-1 rounded-full bg-stone-300 dark:bg-stone-700 mx-auto mb-5" />
               <h3 className="font-[family-name:var(--font-playfair)] text-lg font-bold text-ink mb-1">
-                Add photos to the album
+                Add photos
               </h3>
-              <p className="text-[0.72rem] text-warm mb-5 leading-relaxed">
-                Photos are shared with everyone on the trip via Google Drive.
+              <p className="text-[0.72rem] text-warm mb-5">
+                Photos are shared with everyone — no login needed.
               </p>
 
               <div className="space-y-2.5">
-                <a
-                  href={uploadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setShowUploadSheet(false)}
-                  className="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl bg-accent text-white hover:bg-accent-light transition-colors"
+                {/* Take photo with camera */}
+                <button
+                  onClick={() => {
+                    setShowUploadSheet(false);
+                    cameraInputRef.current?.click();
+                  }}
+                  className="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl bg-accent text-white hover:bg-accent-light transition-colors cursor-pointer"
                 >
                   <span className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center text-xl shrink-0">
-                    📸
+                    📷
                   </span>
                   <div className="text-left">
-                    <div className="text-sm font-semibold">Upload photos</div>
+                    <div className="text-sm font-semibold">Take a photo</div>
                     <div className="text-[0.68rem] text-white/80">
-                      Opens Google Drive — pick photos or use camera
+                      Opens camera — snap and upload instantly
                     </div>
                   </div>
-                </a>
+                </button>
 
-                <a
-                  href={uploadUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setShowUploadSheet(false)}
-                  className="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-ink hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                {/* Pick from gallery */}
+                <button
+                  onClick={() => {
+                    setShowUploadSheet(false);
+                    fileInputRef.current?.click();
+                  }}
+                  className="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-ink hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors cursor-pointer"
                 >
                   <span className="w-11 h-11 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-xl shrink-0">
-                    🔗
+                    🖼️
                   </span>
                   <div className="text-left">
-                    <div className="text-sm font-semibold">Open shared folder</div>
+                    <div className="text-sm font-semibold">Choose from gallery</div>
                     <div className="text-[0.68rem] text-warm">
-                      View, organise or share the Drive folder link
+                      Pick one or multiple photos to upload
                     </div>
                   </div>
-                </a>
+                </button>
               </div>
 
               <button
@@ -290,11 +368,11 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
           <div className="absolute bottom-4 left-4 right-4 text-center">
             <p className="text-white/80 text-sm truncate">{selectedPhoto.name}</p>
             <p className="text-white/50 text-[0.65rem]">
-              {new Date(selectedPhoto.createdTime).toLocaleDateString("sv-SE")}
+              {new Date(selectedPhoto.date).toLocaleDateString("sv-SE")}
             </p>
           </div>
           <Image
-            src={driveImageUrl(selectedPhoto.id, 1600)}
+            src={selectedPhoto.fullUrl}
             alt={selectedPhoto.name}
             width={1600}
             height={1200}
