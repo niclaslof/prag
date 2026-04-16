@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 const GROUP = "walliprag"; // single group for this trip
 
+const CATEGORIES_EMOJI: Record<string, string> = {
+  food: "🍽", transport: "🚕", hotel: "🏨", activity: "🎟",
+  shopping: "🛍", spa: "🧖", other: "💰",
+};
+
 export interface Expense {
   id: string;
   description: string;
@@ -145,10 +150,33 @@ export async function GET() {
     byCategory[e.category] = (byCategory[e.category] || 0) + czk;
   }
 
+  // Build activity feed
+  type Activity = { type: string; text: string; time: string; emoji: string };
+  const activity: Activity[] = [];
+  for (const e of expenses) {
+    const perPerson = Math.round(e.amount / e.splits.length);
+    activity.push({
+      type: "expense",
+      text: `${e.paidBy} added ${e.amount} ${e.currency} for "${e.description}" (${perPerson} each)`,
+      time: e.createdAt,
+      emoji: CATEGORIES_EMOJI[e.category] || "💰",
+    });
+  }
+  for (const s of settlements) {
+    activity.push({
+      type: "settle",
+      text: `${s.from} paid ${s.to} ${s.amount} ${s.currency} via ${s.method}`,
+      time: s.createdAt,
+      emoji: "✅",
+    });
+  }
+  activity.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
   return NextResponse.json({
     expenses,
     settlements,
     balances: netBalances,
+    activity: activity.slice(0, 50),
     stats: {
       totalCZK: Math.round(totalCZK),
       totalSEK: Math.round(totalCZK / SEK_TO_CZK),
