@@ -59,6 +59,7 @@ export default function SplitPanel({ isOpen, onClose }: SplitPanelProps) {
   const [splitNames, setSplitNames] = useState("");
   const [splitType, setSplitType] = useState<"equal" | "amount">("equal");
   const [submitting, setSubmitting] = useState(false);
+  const [successMsg, setSuccessMsg] = useState("");
 
   // Settle form
   const [settleFrom, setSettleFrom] = useState("");
@@ -117,10 +118,12 @@ export default function SplitPanel({ isOpen, onClose }: SplitPanelProps) {
         }),
       });
       if (res.ok) {
+        setSuccessMsg(`✓ ${desc} — ${amount} ${currency} added!`);
         setDesc("");
         setAmount("");
         setTab("expenses");
         fetchData();
+        setTimeout(() => setSuccessMsg(""), 3000);
       }
     } catch { /* ok */ }
     setSubmitting(false);
@@ -157,12 +160,15 @@ export default function SplitPanel({ isOpen, onClose }: SplitPanelProps) {
         {/* Header */}
         <div className="sticky top-0 z-10 bg-ink text-paper px-5 py-4 flex items-start justify-between">
           <div>
-            <p className="text-[0.6rem] uppercase tracking-[0.2em] text-warm mb-1">Expense splitting</p>
-            <h2 className="font-[family-name:var(--font-playfair)] text-xl font-bold">Walli Split</h2>
-            {stats && (
-              <p className="text-[0.68rem] text-warm mt-0.5">
-                {stats.expenseCount} expenses · {stats.totalCZK.toLocaleString()} CZK (~{stats.totalSEK.toLocaleString()} SEK)
-              </p>
+            <h2 className="font-[family-name:var(--font-playfair)] text-xl font-bold">Walli Split 💸</h2>
+            {stats && stats.expenseCount > 0 ? (
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-[0.72rem] font-bold text-amber-400 tabular-nums">{stats.totalCZK.toLocaleString()} CZK</span>
+                <span className="text-[0.65rem] text-warm">~{stats.totalSEK.toLocaleString()} SEK</span>
+                <span className="text-[0.65rem] text-warm">· {stats.expenseCount} st</span>
+              </div>
+            ) : (
+              <p className="text-[0.68rem] text-warm mt-0.5">Track & split expenses with your group</p>
             )}
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-lg cursor-pointer">✕</button>
@@ -170,14 +176,23 @@ export default function SplitPanel({ isOpen, onClose }: SplitPanelProps) {
 
         {/* Tabs */}
         <div className="sticky top-[72px] z-10 bg-panel border-b border-stone-200 dark:border-stone-800 px-3 py-2 flex gap-1.5">
-          {([["expenses", "📋"], ["balances", "⚖️"], ["add", "＋"], ["feed", "🔔"]] as [Tab, string][]).map(([t, label]) => (
+          {([["expenses", "Expenses"], ["balances", "Balance"], ["feed", "Feed"]] as [Tab, string][]).map(([t, label]) => (
             <button key={t} onClick={() => setTab(t)}
               className={`flex-1 py-2 rounded-full text-[0.68rem] font-semibold cursor-pointer transition-colors ${tab === t ? "bg-ink text-paper dark:bg-paper dark:text-ink" : "bg-stone-100 dark:bg-stone-800 text-warm"}`}
             >{label}</button>
           ))}
+          <button onClick={() => setTab("add")}
+            className={`px-4 py-2 rounded-full text-[0.68rem] font-semibold cursor-pointer transition-colors ${tab === "add" ? "bg-accent text-white" : "bg-accent/20 text-accent"}`}
+          >+ Add</button>
         </div>
 
         <div className="p-5">
+          {/* Success toast */}
+          {successMsg && (
+            <div className="mb-3 px-4 py-2.5 rounded-xl bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 text-green-800 dark:text-green-300 text-sm font-medium animate-pulse">
+              {successMsg}
+            </div>
+          )}
           {loading && <div className="flex items-center gap-2 py-8 text-warm text-sm"><div className="w-5 h-5 border-2 border-stone-300 border-t-accent rounded-full animate-spin" />Loading…</div>}
 
           {/* EXPENSES TAB */}
@@ -214,10 +229,13 @@ export default function SplitPanel({ isOpen, onClose }: SplitPanelProps) {
                 </div>
 
                 {expenses.length === 0 && (
-                  <div className="text-center py-12 text-warm">
+                  <div className="text-center py-8 text-warm">
                     <span className="text-5xl block mb-3">💸</span>
-                    <p className="text-sm font-semibold">No expenses yet</p>
-                    <p className="text-[0.72rem] mt-1">Tap <strong>+ Add</strong> to log your first expense</p>
+                    <p className="text-sm font-semibold mb-2">No expenses yet</p>
+                    <p className="text-[0.72rem] mb-4">Start tracking your trip spending!</p>
+                    <button onClick={() => setTab("add")} className="px-5 py-2.5 rounded-full bg-accent text-white text-sm font-semibold cursor-pointer hover:bg-accent-light transition-colors">
+                      + Add first expense
+                    </button>
                   </div>
                 )}
 
