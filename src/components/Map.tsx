@@ -568,41 +568,30 @@ function LoadingSpinner() {
   );
 }
 
+/** Light mode: clean, modern, high-contrast. White base with crisp roads,
+    vivid blue water, lush green parks. Minimal clutter — no POI labels or
+    transit icons, just the city fabric. */
 const CLEAN_STYLES: google.maps.MapTypeStyle[] = [
-  { elementType: "geometry", stylers: [{ color: "#f7f3ee" }] },
-  { elementType: "labels.text.stroke", stylers: [{ color: "#f7f3ee" }] },
-  { elementType: "labels.text.fill", stylers: [{ color: "#8b847c" }] },
+  { elementType: "geometry", stylers: [{ color: "#f5f5f5" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#ffffff" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#616161" }] },
   { featureType: "administrative.land_parcel", stylers: [{ visibility: "off" }] },
-  {
-    featureType: "administrative.neighborhood",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#a8a29e" }],
-  },
-  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ece7e0" }] },
+  { featureType: "administrative.locality", elementType: "labels.text.fill", stylers: [{ color: "#444444" }] },
+  { featureType: "administrative.neighborhood", elementType: "labels.text.fill", stylers: [{ color: "#9e9e9e" }] },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#ffffff" }] },
   { featureType: "road", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
-  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#e5ddd2" }] },
-  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#d8cfc0" }] },
-  {
-    featureType: "road.local",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#b5aea4" }],
-  },
-  { featureType: "water", elementType: "geometry", stylers: [{ color: "#b9cdd9" }] },
-  {
-    featureType: "water",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#5d7382" }],
-  },
-  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#d9e4c8" }] },
-  {
-    featureType: "poi.park",
-    elementType: "labels.text.fill",
-    stylers: [{ color: "#6b7a5a" }],
-  },
+  { featureType: "road.arterial", elementType: "geometry", stylers: [{ color: "#f0f0f0" }] },
+  { featureType: "road.highway", elementType: "geometry", stylers: [{ color: "#e8e2d8" }] },
+  { featureType: "road.highway", elementType: "geometry.stroke", stylers: [{ color: "#d4cdbf" }] },
+  { featureType: "road.local", elementType: "labels.text.fill", stylers: [{ color: "#b0b0b0" }] },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#a3c4d9" }] },
+  { featureType: "water", elementType: "labels.text.fill", stylers: [{ color: "#4a7a94" }] },
+  { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#c5deb5" }] },
+  { featureType: "poi.park", elementType: "labels.text.fill", stylers: [{ color: "#5a7a48" }] },
   { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
   { featureType: "poi.attraction", elementType: "labels.text", stylers: [{ visibility: "off" }] },
   { featureType: "transit", stylers: [{ visibility: "off" }] },
-  { featureType: "transit.station", elementType: "labels.icon", stylers: [{ visibility: "off" }] },
+  { featureType: "landscape.man_made", elementType: "geometry", stylers: [{ color: "#eeeeee" }] },
 ];
 
 /** Dark variant of the clean style – warm graphite base to match the app chrome. */

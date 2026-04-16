@@ -17,12 +17,22 @@
 
 html {
   scroll-behavior: smooth;
+  /* Prevent accidental page zoom on iOS/Android */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent double-tap zoom on interactive elements */
+button, a, input, select, textarea {
+  touch-action: manipulation;
 }
 
 /* Dark mode – toggled via .dark class on html. Tuned to feel premium:
