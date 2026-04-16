@@ -66,7 +66,7 @@ export default function PlaceList({
 
   return (
     <div
-      className={`fixed left-0 top-[98px] md:top-[102px] bottom-0 w-80 md:w-96 bg-panel z-[55] overflow-y-auto transition-transform duration-300 border-r border-stone-200 shadow-[4px_0_16px_rgba(0,0,0,0.1)] ${
+      className={`fixed left-0 top-[66px] md:top-[72px] bottom-0 w-80 md:w-96 bg-panel z-[55] overflow-y-auto transition-transform duration-300 border-r border-stone-200 shadow-[4px_0_16px_rgba(0,0,0,0.1)] ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       }`}
     >

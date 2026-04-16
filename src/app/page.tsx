@@ -191,6 +191,13 @@ export default function Home() {
     setDirectionsSummary(null); // reset until new summary arrives
   };
 
+  const advancedFilterCount =
+    priceLevels.length +
+    (minRating > 0 ? 1 : 0) +
+    activeDistricts.length +
+    (openNowOnly ? 1 : 0) +
+    (kidFriendlyOnly ? 1 : 0);
+
   return (
     <APIProvider apiKey={apiKey}>
       <Header
@@ -199,6 +206,10 @@ export default function Home() {
         isDark={isDark}
         onToggleDark={toggleDark}
         onOpenMenu={() => setMenuOpen(true)}
+        query={query}
+        onQueryChange={setQuery}
+        onOpenFilters={() => setFocusFilters((n) => n + 1)}
+        advancedFilterCount={advancedFilterCount}
       />
       <SearchBar
         query={query}
