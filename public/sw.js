@@ -68,7 +68,33 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   // Only handle same-origin
-  if (url.origin !== self.location.origin) return;
+  if (url.origin !== self.location.origin) {
+    // Cache Google Maps tiles for offline viewing
+    // Tiles the user has already viewed get stored and served from cache
+    if (
+      url.hostname.includes("googleapis.com") &&
+      (url.pathname.includes("/vt") ||
+        url.pathname.includes("/kh") ||
+        url.pathname.includes("/maps/") ||
+        url.pathname.includes("/tile"))
+    ) {
+      event.respondWith(
+        caches.match(request).then(
+          (cached) =>
+            cached ||
+            fetch(request).then((res) => {
+              if (res.ok) {
+                const clone = res.clone();
+                caches.open(CACHE_NAME).then((c) => c.put(request, clone));
+              }
+              return res;
+            }).catch(() => cached || new Response("", { status: 503 }))
+        )
+      );
+      return;
+    }
+    return;
+  }
 
   // 1. Place photos – cache-first (big files, don't re-download)
   if (url.pathname.startsWith("/images/")) {
