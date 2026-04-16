@@ -62,13 +62,11 @@ export function PeopleLayer() {
     markersRef.current.forEach((m) => m.setMap(null));
     markersRef.current = [];
 
-    const myName = typeof window !== "undefined" ? localStorage.getItem("walliprag-name") : null;
+    const myName = typeof window !== "undefined" ? localStorage.getItem("walliprag-name") || "" : "";
 
     people.forEach((p) => {
-      // Don't show self
-      if (myName && p.name === myName) return;
-
-      const color = colorForName(p.name);
+      const isMe = myName && p.name.toLowerCase() === myName.toLowerCase();
+      const color = isMe ? "#16a34a" : colorForName(p.name);
       const svg = makePeopleSvg(p.name, color);
       const marker = new google.maps.Marker({
         position: { lat: p.lat, lng: p.lng },
@@ -78,7 +76,7 @@ export function PeopleLayer() {
           scaledSize: new google.maps.Size(40, 50),
           anchor: new google.maps.Point(20, 50),
         },
-        title: `${p.name} — ${new Date(p.updatedAt).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })}`,
+        title: `${isMe ? "You" : p.name} — ${new Date(p.updatedAt).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" })}`,
         zIndex: 60000,
         opacity: p.stale ? 0.5 : 1,
       });

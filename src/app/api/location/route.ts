@@ -50,13 +50,13 @@ export async function GET() {
 
   for (const b of blobs) {
     try {
-      const res = await fetch(b.url);
+      // Fetch with cache-bust to avoid stale CDN cache
+      const res = await fetch(b.url + "?t=" + now, { cache: "no-store" });
       if (!res.ok) continue;
       const data = await res.json();
       const age = now - new Date(data.updatedAt).getTime();
 
       if (age > STALE_MS) {
-        // Clean up stale locations
         try { await del(b.url); } catch { /* ok */ }
         continue;
       }
@@ -66,12 +66,14 @@ export async function GET() {
         lat: data.lat,
         lng: data.lng,
         updatedAt: data.updatedAt,
-        stale: age > 5 * 60 * 1000, // >5 min = fading
+        stale: age > 5 * 60 * 1000,
       });
     } catch { /* skip */ }
   }
 
-  return NextResponse.json({ people });
+  return NextResponse.json({ people }, {
+    headers: { "Cache-Control": "no-store, max-age=0" },
+  });
 }
 
 export async function DELETE(request: NextRequest) {
