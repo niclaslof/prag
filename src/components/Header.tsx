@@ -21,7 +21,7 @@ export default function Header({
 }: HeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-ink/95 text-paper backdrop-blur-md border-b border-white/5">
-      <div className="flex items-center justify-between px-3 py-1.5 md:px-5 md:py-2 gap-3">
+      <div className="flex items-center justify-between px-2.5 py-1 md:px-5 md:py-1.5 gap-2">
         {/* Tommy avatar + Logo */}
         <div className="flex items-center gap-2.5">
           <button

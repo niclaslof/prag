@@ -277,8 +277,8 @@ function ResetZoomButton({ places }: { places: Place[] }) {
   return (
     <button
       onClick={resetView}
-      className="fixed left-3 z-10 w-11 h-11 rounded-full bg-white/95 dark:bg-stone-900/95 backdrop-blur-md shadow-lg border border-stone-200/80 dark:border-stone-700 flex items-center justify-center cursor-pointer hover:bg-white dark:hover:bg-stone-800 transition-colors"
-      style={{ bottom: "calc(132px + env(safe-area-inset-bottom))" }}
+      className="fixed left-3 z-10 w-11 h-11 rounded-full bg-white dark:bg-stone-900 shadow-lg border border-stone-300 dark:border-stone-700 flex items-center justify-center cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors text-stone-700 dark:text-stone-200"
+      style={{ bottom: "calc(76px + env(safe-area-inset-bottom))" }}
       title="Zoom to fit all places"
       aria-label="Reset zoom"
     >
@@ -511,28 +511,40 @@ interface MapTypeToggleProps {
 }
 
 function MapTypeToggle({ mode, onChange }: MapTypeToggleProps) {
-  const modes: { id: MapMode; label: string; title: string }[] = [
-    { id: "clean", label: "Map", title: "Minimal map" },
-    { id: "terrain", label: "Terrain", title: "Streets & buildings" },
-    { id: "satellite", label: "Satellite", title: "Aerial view" },
-  ];
+  const [open, setOpen] = useState(false);
+  const next = (): MapMode => {
+    if (mode === "clean") return "terrain";
+    if (mode === "terrain") return "satellite";
+    return "clean";
+  };
+  const label = mode === "clean" ? "Map" : mode === "terrain" ? "Terrain" : "Sat";
 
   return (
-    <div className="fixed top-[74px] md:top-[80px] right-2 z-10 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md shadow-lg rounded-full p-0.5 flex gap-0.5 border border-stone-200 dark:border-stone-700">
-      {modes.map((m) => (
+    <div className="fixed top-[74px] md:top-[80px] right-2 z-10">
+      {open ? (
+        <div className="bg-white dark:bg-stone-900 shadow-lg rounded-xl p-1 flex flex-col gap-0.5 border border-stone-200 dark:border-stone-700 animate-in">
+          {(["clean", "terrain", "satellite"] as MapMode[]).map((m) => (
+            <button
+              key={m}
+              onClick={() => { onChange(m); setOpen(false); }}
+              className={`px-3 py-1.5 rounded-lg text-[0.65rem] font-semibold transition-colors cursor-pointer text-left ${
+                mode === m
+                  ? "bg-ink text-paper dark:bg-paper dark:text-ink"
+                  : "text-stone-500 hover:bg-stone-100 dark:text-stone-400 dark:hover:bg-stone-800"
+              }`}
+            >
+              {m === "clean" ? "🗺 Map" : m === "terrain" ? "🏔 Terrain" : "🛰 Satellite"}
+            </button>
+          ))}
+        </div>
+      ) : (
         <button
-          key={m.id}
-          onClick={() => onChange(m.id)}
-          title={m.title}
-          className={`px-2.5 py-1 rounded-full text-[0.6rem] font-semibold uppercase tracking-wide transition-colors cursor-pointer ${
-            mode === m.id
-              ? "bg-ink text-paper dark:bg-paper dark:text-ink"
-              : "text-stone-500 hover:text-ink dark:text-stone-400 dark:hover:text-paper"
-          }`}
+          onClick={() => setOpen(true)}
+          className="bg-white dark:bg-stone-900 shadow-lg rounded-lg px-2.5 py-1.5 border border-stone-200 dark:border-stone-700 text-[0.62rem] font-semibold text-stone-600 dark:text-stone-300 cursor-pointer hover:bg-stone-50 dark:hover:bg-stone-800 transition-colors"
         >
-          {m.label}
+          {label} ▾
         </button>
-      ))}
+      )}
     </div>
   );
 }
