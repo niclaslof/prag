@@ -23,19 +23,27 @@ export async function POST(request: NextRequest) {
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const pathname = `album/${timestamp}-${safeName}`;
 
-  const blob = await put(pathname, file, {
-    access: "public",
-    addRandomSuffix: false,
-  });
+  try {
+    const blob = await put(pathname, file, {
+      access: "public",
+      addRandomSuffix: false,
+    });
 
-  return NextResponse.json({ url: blob.url, pathname: blob.pathname });
+    return NextResponse.json({ url: blob.url, pathname: blob.pathname });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json(
+      { error: `Blob upload failed: ${msg}` },
+      { status: 500 }
+    );
+  }
 }
 
 export async function GET() {
   const { blobs } = await list({ prefix: "album/" });
 
+  // All files in album/ are images (validated on upload) — don't filter by extension
   const photos = blobs
-    .filter((b) => /\.(jpg|jpeg|png|webp|gif|heic)$/i.test(b.pathname))
     .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
     .map((b) => ({
       url: b.url,

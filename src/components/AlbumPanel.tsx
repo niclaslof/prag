@@ -113,6 +113,7 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
     setUploadProgress(`Uploading ${fileArr.length} photo${fileArr.length > 1 ? "s" : ""}…`);
 
     let uploaded = 0;
+    let lastError = "";
     for (const file of fileArr) {
       try {
         const formData = new FormData();
@@ -124,13 +125,19 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
         if (res.ok) {
           uploaded++;
           setUploadProgress(`Uploaded ${uploaded}/${fileArr.length}…`);
+        } else {
+          const errText = await res.text();
+          lastError = `Upload failed: ${res.status} ${errText.slice(0, 100)}`;
         }
-      } catch {
-        // skip
+      } catch (e) {
+        lastError = `Network error: ${e instanceof Error ? e.message : String(e)}`;
       }
     }
 
     setUploading(false);
+    if (uploaded === 0 && lastError) {
+      setError(lastError);
+    }
     setUploadProgress("");
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
