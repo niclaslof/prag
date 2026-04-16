@@ -47,6 +47,7 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedPhoto, setSelectedPhoto] = useState<DriveFile | null>(null);
+  const [showUploadSheet, setShowUploadSheet] = useState(false);
 
   const fetchPhotos = useCallback(async () => {
     if (!FOLDER_ID || !API_KEY) {
@@ -132,26 +133,8 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
           </button>
         </div>
 
-        {/* Upload CTA */}
-        <div className="px-5 pt-4 pb-2">
-          <a
-            href={uploadUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-3 px-4 py-3 rounded-xl bg-accent/10 dark:bg-accent/20 border border-accent/30 text-accent hover:bg-accent/20 transition-colors cursor-pointer"
-          >
-            <span className="text-2xl">📷</span>
-            <div>
-              <div className="text-sm font-semibold">Add your photos</div>
-              <div className="text-[0.68rem] text-warm">
-                Opens the shared Google Drive folder — drag & drop or upload
-              </div>
-            </div>
-          </a>
-        </div>
-
         {/* Body */}
-        <div className="px-5 pb-8 pt-3">
+        <div className="px-5 pb-24 pt-4">
           {loading && (
             <div className="flex items-center gap-3 py-8 text-warm text-sm">
               <div className="w-5 h-5 border-2 border-stone-300 border-t-accent rounded-full animate-spin" />
@@ -212,6 +195,83 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
             </button>
           )}
         </div>
+
+        {/* Floating + button */}
+        <button
+          onClick={() => setShowUploadSheet(true)}
+          className="fixed bottom-6 right-6 w-14 h-14 rounded-full bg-accent shadow-[0_6px_24px_rgba(180,83,9,0.5)] text-white text-3xl font-light flex items-center justify-center cursor-pointer hover:bg-accent-light hover:scale-105 active:scale-95 transition-all z-[78]"
+          style={{ bottom: "calc(24px + env(safe-area-inset-bottom))" }}
+          aria-label="Upload photo"
+        >
+          +
+        </button>
+
+        {/* Upload bottom sheet */}
+        {showUploadSheet && (
+          <div
+            className="fixed inset-0 z-[79] bg-black/40"
+            onClick={() => setShowUploadSheet(false)}
+          >
+            <div
+              className="absolute bottom-0 left-0 right-0 bg-panel dark:bg-stone-900 rounded-t-3xl shadow-2xl p-6"
+              style={{ paddingBottom: "calc(24px + env(safe-area-inset-bottom))" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-10 h-1 rounded-full bg-stone-300 dark:bg-stone-700 mx-auto mb-5" />
+              <h3 className="font-[family-name:var(--font-playfair)] text-lg font-bold text-ink mb-1">
+                Add photos to the album
+              </h3>
+              <p className="text-[0.72rem] text-warm mb-5 leading-relaxed">
+                Photos are shared with everyone on the trip via Google Drive.
+              </p>
+
+              <div className="space-y-2.5">
+                <a
+                  href={uploadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowUploadSheet(false)}
+                  className="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl bg-accent text-white hover:bg-accent-light transition-colors"
+                >
+                  <span className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center text-xl shrink-0">
+                    📸
+                  </span>
+                  <div className="text-left">
+                    <div className="text-sm font-semibold">Upload photos</div>
+                    <div className="text-[0.68rem] text-white/80">
+                      Opens Google Drive — pick photos or use camera
+                    </div>
+                  </div>
+                </a>
+
+                <a
+                  href={uploadUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowUploadSheet(false)}
+                  className="flex items-center gap-4 w-full px-4 py-3.5 rounded-xl bg-stone-100 dark:bg-stone-800 text-ink hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors"
+                >
+                  <span className="w-11 h-11 rounded-full bg-stone-200 dark:bg-stone-700 flex items-center justify-center text-xl shrink-0">
+                    🔗
+                  </span>
+                  <div className="text-left">
+                    <div className="text-sm font-semibold">Open shared folder</div>
+                    <div className="text-[0.68rem] text-warm">
+                      View, organise or share the Drive folder link
+                    </div>
+                  </div>
+                </a>
+              </div>
+
+              <button
+                onClick={() => setShowUploadSheet(false)}
+                className="w-full mt-4 py-2.5 rounded-xl text-sm text-warm font-medium hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </aside>
 
       {/* Lightbox */}
