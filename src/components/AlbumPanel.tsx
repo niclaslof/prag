@@ -104,7 +104,7 @@ async function compressImage(file: File): Promise<File> {
     const url = URL.createObjectURL(file);
     img.onload = () => {
       URL.revokeObjectURL(url);
-      const MAX = 1600;
+      const MAX = 2400; // Higher res for better download quality
       let { width, height } = img;
       if (width > MAX || height > MAX) {
         const r = Math.min(MAX / width, MAX / height);
@@ -189,10 +189,11 @@ function LightboxWithComments({
     if (showComments) fetchComments();
   }, [showComments, fetchComments]);
 
-  // Reset when photo changes
+  // Reload comments when photo changes (if comments panel is open)
   useEffect(() => {
-    setShowComments(false);
     setComments([]);
+    if (showComments) fetchComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [photo.id]);
 
   const handleSend = async () => {
@@ -231,11 +232,13 @@ function LightboxWithComments({
             💬 {comments.length || ""}
           </button>
           <a
-            href={photo.fullUrl}
+            href={photo.source === "drive" ? photo.fullUrl.replace("=w1600", "=w4000") : photo.fullUrl}
             download={photo.name}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer"
-            title="Download"
+            title="Download full resolution"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </a>
