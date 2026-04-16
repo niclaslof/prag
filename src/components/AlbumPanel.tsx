@@ -132,6 +132,177 @@ async function compressImage(file: File): Promise<File> {
   });
 }
 
+interface Comment {
+  author: string;
+  text: string;
+  createdAt: string;
+}
+
+function LightboxWithComments({
+  photo, photoIdx, totalPhotos, onClose, onPrev, onNext, onTouchStart, onTouchEnd, onGoTo,
+}: {
+  photo: PhotoItem;
+  photoIdx: number;
+  totalPhotos: number;
+  onClose: () => void;
+  onPrev: () => void;
+  onNext: () => void;
+  onTouchStart: (e: React.TouchEvent) => void;
+  onTouchEnd: (e: React.TouchEvent) => void;
+  onGoTo: (i: number) => void;
+}) {
+  const [showComments, setShowComments] = useState(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loadingComments, setLoadingComments] = useState(false);
+  const [newComment, setNewComment] = useState("");
+  const [authorName, setAuthorName] = useState(() =>
+    typeof window !== "undefined" ? localStorage.getItem("walliprag-name") || "" : ""
+  );
+  const [sending, setSending] = useState(false);
+
+  const fetchComments = useCallback(async () => {
+    setLoadingComments(true);
+    try {
+      const res = await fetch(`/api/album/comments?photoUrl=${encodeURIComponent(photo.fullUrl)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setComments(data.comments || []);
+      }
+    } catch { /* ok */ }
+    setLoadingComments(false);
+  }, [photo.fullUrl]);
+
+  useEffect(() => {
+    if (showComments) fetchComments();
+  }, [showComments, fetchComments]);
+
+  // Reset when photo changes
+  useEffect(() => {
+    setShowComments(false);
+    setComments([]);
+  }, [photo.id]);
+
+  const handleSend = async () => {
+    if (!newComment.trim()) return;
+    const name = authorName.trim() || "Anonymous";
+    if (authorName.trim()) localStorage.setItem("walliprag-name", authorName.trim());
+
+    setSending(true);
+    try {
+      const res = await fetch("/api/album/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoUrl: photo.fullUrl, author: name, text: newComment.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setComments((prev) => [...prev, data.comment]);
+        setNewComment("");
+      }
+    } catch { /* ok */ }
+    setSending(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[80] bg-black flex flex-col select-none">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-4 py-3 shrink-0">
+        <span className="text-white/70 text-sm tabular-nums">{photoIdx + 1} / {totalPhotos}</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowComments((v) => !v)}
+            className={`px-3 py-1.5 rounded-full text-[0.68rem] font-semibold transition-colors cursor-pointer ${
+              showComments ? "bg-accent text-white" : "bg-white/10 text-white/70 hover:bg-white/20"
+            }`}
+          >
+            💬 {comments.length || ""}
+          </button>
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg cursor-pointer">✕</button>
+        </div>
+      </div>
+
+      {/* Photo area */}
+      <div className="flex-1 flex items-center justify-center relative min-h-0" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        {photoIdx > 0 && <button onClick={(e) => { e.stopPropagation(); onPrev(); }} className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white text-2xl flex items-center justify-center cursor-pointer z-10">‹</button>}
+        {photoIdx < totalPhotos - 1 && <button onClick={(e) => { e.stopPropagation(); onNext(); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white text-2xl flex items-center justify-center cursor-pointer z-10">›</button>}
+        <Image key={photo.id} src={photo.fullUrl} alt={photo.name} width={1600} height={1200} className="max-w-[95vw] max-h-full object-contain" unoptimized />
+      </div>
+
+      {/* Photo info + dots */}
+      <div className="shrink-0 text-center py-2">
+        <p className="text-white/80 text-sm truncate px-4">{photo.name}</p>
+        <p className="text-white/50 text-[0.6rem]">{new Date(photo.date).toLocaleDateString("sv-SE")}</p>
+        {totalPhotos <= 20 && (
+          <div className="flex justify-center gap-1.5 mt-2">
+            {Array.from({ length: totalPhotos }).map((_, i) => (
+              <button key={i} onClick={() => onGoTo(i)} className={`rounded-full transition-all cursor-pointer ${i === photoIdx ? "w-5 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/40"}`} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Comments drawer */}
+      {showComments && (
+        <div className="shrink-0 max-h-[40vh] bg-stone-900 border-t border-stone-800 flex flex-col" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+          {/* Comments list */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 min-h-0">
+            {loadingComments && (
+              <div className="flex items-center gap-2 text-white/50 text-sm">
+                <div className="w-4 h-4 border-2 border-white/20 border-t-white/60 rounded-full animate-spin" />
+                Loading…
+              </div>
+            )}
+            {!loadingComments && comments.length === 0 && (
+              <p className="text-white/40 text-sm text-center py-4">No comments yet — be the first!</p>
+            )}
+            {comments.map((c, i) => (
+              <div key={i}>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[0.72rem] font-semibold text-amber-400">{c.author}</span>
+                  <span className="text-[0.6rem] text-white/30">
+                    {new Date(c.createdAt).toLocaleString("sv-SE", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+                <p className="text-[0.78rem] text-white/80 leading-snug">{c.text}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Input */}
+          <div className="border-t border-stone-800 px-4 py-2 flex gap-2 items-end shrink-0">
+            <div className="flex-1 min-w-0">
+              {!authorName && (
+                <input
+                  type="text"
+                  value={authorName}
+                  onChange={(e) => setAuthorName(e.target.value)}
+                  placeholder="Your name…"
+                  className="w-full px-3 py-1.5 mb-1.5 rounded-lg bg-stone-800 text-white text-[0.72rem] border border-stone-700 outline-none focus:border-amber-500 placeholder:text-white/30"
+                />
+              )}
+              <input
+                type="text"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSend()}
+                placeholder="Write a comment…"
+                className="w-full px-3 py-2 rounded-lg bg-stone-800 text-white text-sm border border-stone-700 outline-none focus:border-amber-500 placeholder:text-white/30"
+              />
+            </div>
+            <button
+              onClick={handleSend}
+              disabled={sending || !newComment.trim()}
+              className="shrink-0 px-4 py-2 rounded-lg bg-accent text-white text-sm font-semibold hover:bg-accent-light transition-colors cursor-pointer disabled:opacity-40"
+            >
+              {sending ? "…" : "Send"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -350,24 +521,19 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
         )}
       </aside>
 
-      {/* Fullscreen swipe lightbox */}
+      {/* Fullscreen swipe lightbox with comments */}
       {cur && (
-        <div className="fixed inset-0 z-[80] bg-black flex items-center justify-center select-none" onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-          <button onClick={() => setLightboxIdx(null)} className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-xl cursor-pointer z-10">✕</button>
-          <div className="absolute top-5 left-1/2 -translate-x-1/2 text-white/70 text-sm font-medium tabular-nums z-10">{lightboxIdx! + 1} / {photos.length}</div>
-          {lightboxIdx! > 0 && <button onClick={(e) => { e.stopPropagation(); goPrev(); }} className="absolute left-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white text-2xl flex items-center justify-center cursor-pointer z-10">‹</button>}
-          {lightboxIdx! < photos.length - 1 && <button onClick={(e) => { e.stopPropagation(); goNext(); }} className="absolute right-2 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white text-2xl flex items-center justify-center cursor-pointer z-10">›</button>}
-          <Image key={cur.id} src={cur.fullUrl} alt={cur.name} width={1600} height={1200} className="max-w-[95vw] max-h-[85vh] object-contain" unoptimized />
-          <div className="absolute bottom-4 left-4 right-4 text-center">
-            <p className="text-white/80 text-sm truncate">{cur.name}</p>
-            <p className="text-white/50 text-[0.65rem]">{new Date(cur.date).toLocaleDateString("sv-SE")}</p>
-          </div>
-          {photos.length <= 20 && (
-            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-1.5">
-              {photos.map((_, i) => <button key={i} onClick={() => setLightboxIdx(i)} className={`rounded-full transition-all cursor-pointer ${i === lightboxIdx ? "w-6 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/40"}`} />)}
-            </div>
-          )}
-        </div>
+        <LightboxWithComments
+          photo={cur}
+          photoIdx={lightboxIdx!}
+          totalPhotos={photos.length}
+          onClose={() => setLightboxIdx(null)}
+          onPrev={goPrev}
+          onNext={goNext}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          onGoTo={setLightboxIdx}
+        />
       )}
     </>
   );
