@@ -3,7 +3,8 @@ export type Category =
   | "bar"
   | "sight"
   | "cafe"
-  | "club";
+  | "club"
+  | "spa";
 
 export interface CategoryMeta {
   id: Category;
@@ -118,6 +119,15 @@ export const CATEGORIES: Record<Category, CategoryMeta> = {
     colorLight: "#fce7f3",
     colorDark: "#831843",
   },
+  spa: {
+    id: "spa",
+    name: "Spa",
+    namePlural: "Spas",
+    emoji: "🧖",
+    color: "#0d9488",
+    colorLight: "#ccfbf1",
+    colorDark: "#134e4a",
+  },
 };
 
 export const PRAGUE_CENTER = { lat: 50.0875, lng: 14.4213 };
@@ -155,4 +165,5 @@ export const CATEGORY_FILTERS: Category[] = [
   "sight",
   "cafe",
   "club",
+  "spa",
 ];

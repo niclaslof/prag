@@ -4,6 +4,7 @@ import { bars } from "./categories/bars";
 import { sights } from "./categories/sights";
 import { cafes } from "./categories/cafes";
 import { clubs } from "./categories/clubs";
+import { spas } from "./categories/spas";
 import { enrichment } from "./enrichment.generated";
 
 /** Merge curated seed data with optional API-enriched fields. */
@@ -19,6 +20,7 @@ export const allPlaces: Place[] = [
   ...sights,
   ...cafes,
   ...clubs,
+  ...spas,
 ].map(withEnrichment);
 
 export const places = allPlaces;

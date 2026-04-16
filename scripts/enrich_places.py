@@ -92,6 +92,7 @@ CATEGORY_FILES = {
     "sight": "sights.ts",
     "cafe": "cafes.ts",
     "club": "clubs.ts",
+    "spa": "spas.ts",
 }
 
 
