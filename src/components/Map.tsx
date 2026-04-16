@@ -14,7 +14,6 @@ interface MapProps {
   directionsTarget?: Place | null;
   directionsMode?: DirectionsMode;
   onDirectionsResult?: (summary: DirectionsSummary | null) => void;
-  photoMarkers?: boolean;
 }
 
 export type DirectionsMode = "walking" | "transit" | "driving" | "bicycling";
@@ -33,7 +32,7 @@ export interface DirectionsSummary {
   fare?: string;
 }
 
-function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite, photoMarkers }: MapProps) {
+function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite }: MapProps) {
   const map = useMap();
   const markersRef = useRef<google.maps.Marker[]>([]);
   const clustererRef = useRef<MarkerClusterer | null>(null);
@@ -98,88 +97,6 @@ function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite, photoMa
       `fill="url(#star)" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round"/>` +
       `</svg>`;
 
-    /** Build a photo thumbnail marker as a canvas-drawn icon URL. */
-    const makePhotoIcon = (place: Place): Promise<google.maps.Icon> => {
-      const SIZE = 52;
-      const BORDER = 3;
-      const meta = CATEGORIES[place.category];
-      return new Promise((resolve) => {
-        const canvas = document.createElement("canvas");
-        canvas.width = SIZE;
-        canvas.height = SIZE;
-        const ctx = canvas.getContext("2d")!;
-
-        // Clip to rounded rect
-        const r = 10;
-        ctx.beginPath();
-        ctx.moveTo(r, 0);
-        ctx.lineTo(SIZE - r, 0);
-        ctx.quadraticCurveTo(SIZE, 0, SIZE, r);
-        ctx.lineTo(SIZE, SIZE - r);
-        ctx.quadraticCurveTo(SIZE, SIZE, SIZE - r, SIZE);
-        ctx.lineTo(r, SIZE);
-        ctx.quadraticCurveTo(0, SIZE, 0, SIZE - r);
-        ctx.lineTo(0, r);
-        ctx.quadraticCurveTo(0, 0, r, 0);
-        ctx.closePath();
-
-        // Border fill
-        ctx.fillStyle = place.isTopPick ? "#f59e0b" : meta.color;
-        ctx.fill();
-
-        // Inner clip for photo
-        ctx.save();
-        const inner = BORDER;
-        const innerSize = SIZE - BORDER * 2;
-        const ir = r - 2;
-        ctx.beginPath();
-        ctx.moveTo(inner + ir, inner);
-        ctx.lineTo(inner + innerSize - ir, inner);
-        ctx.quadraticCurveTo(inner + innerSize, inner, inner + innerSize, inner + ir);
-        ctx.lineTo(inner + innerSize, inner + innerSize - ir);
-        ctx.quadraticCurveTo(inner + innerSize, inner + innerSize, inner + innerSize - ir, inner + innerSize);
-        ctx.lineTo(inner + ir, inner + innerSize);
-        ctx.quadraticCurveTo(inner, inner + innerSize, inner, inner + innerSize - ir);
-        ctx.lineTo(inner, inner + ir);
-        ctx.quadraticCurveTo(inner, inner, inner + ir, inner);
-        ctx.closePath();
-        ctx.clip();
-
-        // Try loading the photo
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          // Draw photo cropped to square
-          const s = Math.min(img.width, img.height);
-          ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s,
-            inner, inner, innerSize, innerSize);
-          ctx.restore();
-          resolve({
-            url: canvas.toDataURL("image/png"),
-            scaledSize: new google.maps.Size(SIZE, SIZE),
-            anchor: new google.maps.Point(SIZE / 2, SIZE / 2),
-          });
-        };
-        img.onerror = () => {
-          // Fallback: solid color with emoji text
-          ctx.fillStyle = meta.color;
-          ctx.fillRect(inner, inner, innerSize, innerSize);
-          ctx.restore();
-          ctx.fillStyle = "#ffffff";
-          ctx.font = "18px system-ui";
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(meta.emoji, SIZE / 2, SIZE / 2);
-          resolve({
-            url: canvas.toDataURL("image/png"),
-            scaledSize: new google.maps.Size(SIZE, SIZE),
-            anchor: new google.maps.Point(SIZE / 2, SIZE / 2),
-          });
-        };
-        img.src = `/images/places/${place.id}.jpg`;
-      });
-    };
-
     const markers = places.map((place) => {
       const meta = CATEGORIES[place.category];
       const fav = isFavorite?.(place.category, place.id) ?? false;
@@ -214,11 +131,6 @@ function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite, photoMa
         },
         optimized: true,
       });
-
-      // If photo mode, async-replace the pin with a photo thumbnail
-      if (photoMarkers && !place.isHomeHotel) {
-        makePhotoIcon(place).then((icon) => marker.setIcon(icon));
-      }
 
       marker.addListener("click", () => onSelectPlace(place));
       return marker;
@@ -293,7 +205,7 @@ function MarkerLayer({ places, selectedPlace, onSelectPlace, isFavorite, photoMa
       markersRef.current.forEach((m) => m.setMap(null));
       markersRef.current = [];
     };
-  }, [map, places, onSelectPlace, isFavorite, photoMarkers]);
+  }, [map, places, onSelectPlace, isFavorite]);
 
   // Highlight selected marker by scaling it up
   useEffect(() => {
@@ -351,6 +263,107 @@ function FindHomeButton({ home }: { home?: Place }) {
       Home
     </button>
   );
+}
+
+/** Show album photos on the map at their GPS coordinates. */
+function AlbumPhotosLayer({
+  photos,
+  onSelectPlace,
+  markersRef,
+}: {
+  photos: { url: string; lat: number; lng: number; name: string }[];
+  onSelectPlace: (place: Place) => void;
+  markersRef: React.MutableRefObject<google.maps.Marker[]>;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    // Clear old markers
+    markersRef.current.forEach((m) => m.setMap(null));
+    markersRef.current = [];
+
+    if (!map || photos.length === 0) return;
+
+    photos.forEach((photo) => {
+      const SIZE = 48;
+      const canvas = document.createElement("canvas");
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext("2d")!;
+
+      // White circle background
+      ctx.beginPath();
+      ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffffff";
+      ctx.fill();
+      ctx.strokeStyle = "#f59e0b";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      // Clip inner circle for photo
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(SIZE / 2, SIZE / 2, SIZE / 2 - 3, 0, Math.PI * 2);
+      ctx.clip();
+
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const s = Math.min(img.width, img.height);
+        ctx.drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 3, 3, SIZE - 6, SIZE - 6);
+        ctx.restore();
+
+        const marker = new google.maps.Marker({
+          position: { lat: photo.lat, lng: photo.lng },
+          map,
+          icon: {
+            url: canvas.toDataURL("image/png"),
+            scaledSize: new google.maps.Size(SIZE, SIZE),
+            anchor: new google.maps.Point(SIZE / 2, SIZE / 2),
+          },
+          title: photo.name,
+          zIndex: 40000,
+        });
+        marker.addListener("click", () => {
+          // Open photo in lightbox — for now just pan to it
+          map.panTo({ lat: photo.lat, lng: photo.lng });
+          map.setZoom(16);
+        });
+        markersRef.current.push(marker);
+      };
+      img.onerror = () => {
+        // Fallback: amber circle with camera emoji
+        ctx.fillStyle = "#f59e0b";
+        ctx.fillRect(3, 3, SIZE - 6, SIZE - 6);
+        ctx.restore();
+        ctx.font = "20px system-ui";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("📷", SIZE / 2, SIZE / 2);
+
+        const marker = new google.maps.Marker({
+          position: { lat: photo.lat, lng: photo.lng },
+          map,
+          icon: {
+            url: canvas.toDataURL("image/png"),
+            scaledSize: new google.maps.Size(SIZE, SIZE),
+            anchor: new google.maps.Point(SIZE / 2, SIZE / 2),
+          },
+          title: photo.name,
+          zIndex: 40000,
+        });
+        markersRef.current.push(marker);
+      };
+      img.src = photo.url;
+    });
+
+    return () => {
+      markersRef.current.forEach((m) => m.setMap(null));
+      markersRef.current = [];
+    };
+  }, [map, photos, markersRef, onSelectPlace]);
+
+  return null;
 }
 
 /** Reset zoom to fit all visible places. */
@@ -753,7 +766,9 @@ export default function MapComponent({
 }: MapProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
   const [mapMode, setMapMode] = useState<MapMode>("clean");
-  const [photoMarkers, setPhotoMarkers] = useState(false);
+  const [showAlbumPhotos, setShowAlbumPhotos] = useState(false);
+  const [albumPhotos, setAlbumPhotos] = useState<{ url: string; lat: number; lng: number; name: string }[]>([]);
+  const albumMarkersRef = useRef<google.maps.Marker[]>([]);
   const homeHotel = places.find((p) => p.isHomeHotel);
   const isDark = useIsDark();
   const styles =
@@ -798,7 +813,6 @@ export default function MapComponent({
           selectedPlace={selectedPlace}
           onSelectPlace={onSelectPlace}
           isFavorite={isFavorite}
-          photoMarkers={photoMarkers}
         />
         <DirectionsLayer
           target={directionsTarget}
@@ -809,17 +823,31 @@ export default function MapComponent({
         <UserLocationDot />
         <MapTypeToggle mode={mapMode} onChange={setMapMode} />
         <FindHomeButton home={homeHotel} />
-        {/* Photo markers toggle */}
+        <AlbumPhotosLayer photos={showAlbumPhotos ? albumPhotos : []} onSelectPlace={onSelectPlace} markersRef={albumMarkersRef} />
+        {/* Album photos toggle */}
         <button
-          onClick={() => setPhotoMarkers((v) => !v)}
+          onClick={async () => {
+            const next = !showAlbumPhotos;
+            setShowAlbumPhotos(next);
+            if (next && albumPhotos.length === 0) {
+              try {
+                const res = await fetch("/api/album");
+                if (res.ok) {
+                  const data = await res.json();
+                  const withGPS = (data.photos || []).filter((p: { lat: number | null }) => p.lat !== null);
+                  setAlbumPhotos(withGPS);
+                }
+              } catch { /* ok */ }
+            }
+          }}
           className={`fixed left-3 z-10 w-11 h-11 rounded-full shadow-lg border flex items-center justify-center cursor-pointer transition-all ${
-            photoMarkers
+            showAlbumPhotos
               ? "bg-accent text-white border-accent shadow-[0_4px_16px_rgba(180,83,9,0.4)]"
               : "bg-white dark:bg-stone-900 text-stone-600 dark:text-stone-300 border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-800"
           }`}
           style={{ bottom: "calc(132px + env(safe-area-inset-bottom))" }}
-          title={photoMarkers ? "Show pin markers" : "Show photo markers"}
-          aria-label="Toggle photo markers"
+          title={showAlbumPhotos ? "Hide trip photos" : "Show trip photos on map"}
+          aria-label="Toggle trip photos on map"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" />

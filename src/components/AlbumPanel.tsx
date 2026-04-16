@@ -20,6 +20,82 @@ interface AlbumPanelProps {
   onClose: () => void;
 }
 
+/** Extract GPS coordinates from JPEG EXIF data (returns null if not found). */
+async function extractExifGPS(file: File): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const buf = await file.slice(0, 128 * 1024).arrayBuffer(); // read first 128KB
+    const view = new DataView(buf);
+    if (view.getUint16(0) !== 0xFFD8) return null; // not JPEG
+
+    let offset = 2;
+    while (offset < view.byteLength - 4) {
+      const marker = view.getUint16(offset);
+      if (marker === 0xFFE1) { // APP1 = EXIF
+        const len = view.getUint16(offset + 2);
+        const exifData = new DataView(buf, offset + 4, len - 2);
+        return parseExifGPS(exifData);
+      }
+      if ((marker & 0xFF00) !== 0xFF00) break;
+      offset += 2 + view.getUint16(offset + 2);
+    }
+  } catch { /* ok */ }
+  return null;
+}
+
+function parseExifGPS(data: DataView): { lat: number; lng: number } | null {
+  try {
+    // Check "Exif\0\0"
+    if (data.getUint32(0) !== 0x45786966 || data.getUint16(4) !== 0) return null;
+    const tiffOffset = 6;
+    const le = data.getUint16(tiffOffset) === 0x4949; // little-endian?
+    const g = (o: number, s: number) => s === 2 ? data.getUint16(tiffOffset + o, le) : data.getUint32(tiffOffset + o, le);
+
+    // Find IFD0
+    const ifd0Count = g(g(4, 4), 2);
+    let gpsIFDOffset = 0;
+    const ifd0Start = g(4, 4) + 2;
+    for (let i = 0; i < ifd0Count; i++) {
+      const entryOff = ifd0Start + i * 12;
+      if (g(entryOff, 2) === 0x8825) { // GPSInfoIFDPointer
+        gpsIFDOffset = g(entryOff + 8, 4);
+        break;
+      }
+    }
+    if (!gpsIFDOffset) return null;
+
+    const gpsCount = g(gpsIFDOffset, 2);
+    let latRef = "", lngRef = "";
+    let latVals: number[] = [], lngVals: number[] = [];
+
+    const rational = (off: number) => {
+      const num = g(off, 4);
+      const den = g(off + 4, 4);
+      return den ? num / den : 0;
+    };
+
+    for (let i = 0; i < gpsCount; i++) {
+      const e = gpsIFDOffset + 2 + i * 12;
+      const tag = g(e, 2);
+      const valOff = g(e + 8, 4);
+      if (tag === 1) latRef = String.fromCharCode(data.getUint8(tiffOffset + e + 8));
+      if (tag === 3) lngRef = String.fromCharCode(data.getUint8(tiffOffset + e + 8));
+      if (tag === 2) latVals = [rational(valOff), rational(valOff + 8), rational(valOff + 16)];
+      if (tag === 4) lngVals = [rational(valOff), rational(valOff + 8), rational(valOff + 16)];
+    }
+
+    if (latVals.length === 3 && lngVals.length === 3) {
+      let lat = latVals[0] + latVals[1] / 60 + latVals[2] / 3600;
+      let lng = lngVals[0] + lngVals[1] / 60 + lngVals[2] / 3600;
+      if (latRef === "S") lat = -lat;
+      if (lngRef === "W") lng = -lng;
+      if (lat !== 0 || lng !== 0) {
+        return { lat: Math.round(lat * 100000) / 100000, lng: Math.round(lng * 100000) / 100000 };
+      }
+    }
+  } catch { /* ok */ }
+  return null;
+}
+
 /** Compress image client-side before upload: max 1600px, JPEG 0.82 quality. */
 async function compressImage(file: File): Promise<File> {
   if (file.size < 500_000) return file;
@@ -104,6 +180,17 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
 
   useEffect(() => { if (isOpen && photos.length === 0) fetchPhotos(); }, [isOpen, photos.length, fetchPhotos]);
 
+  /** Get current GPS position (best-effort, times out after 5s). */
+  const getGPS = (): Promise<{ lat: number; lng: number } | null> =>
+    new Promise((resolve) => {
+      if (!navigator.geolocation) { resolve(null); return; }
+      navigator.geolocation.getCurrentPosition(
+        (p) => resolve({ lat: Math.round(p.coords.latitude * 100000) / 100000, lng: Math.round(p.coords.longitude * 100000) / 100000 }),
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 30000 }
+      );
+    });
+
   const uploadFiles = async (files: FileList | File[]) => {
     setShowUploadSheet(false);
     setUploading(true);
@@ -111,13 +198,26 @@ export default function AlbumPanel({ isOpen, onClose }: AlbumPanelProps) {
     const arr = Array.from(files);
     let uploaded = 0, lastErr = "";
 
+    // Get live GPS once as fallback for photos without EXIF
+    setUploadProgress("Getting location…");
+    const liveGPS = await getGPS();
+
     for (const file of arr) {
       try {
+        // Try EXIF GPS from the original file first (before compression strips it)
+        setUploadProgress(`Reading ${uploaded + 1}/${arr.length}…`);
+        const exifGPS = await extractExifGPS(file);
+        const gps = exifGPS || liveGPS;
+
         setUploadProgress(`Compressing ${uploaded + 1}/${arr.length}…`);
         const compressed = await compressImage(file);
         setUploadProgress(`Uploading ${uploaded + 1}/${arr.length}…`);
         const fd = new FormData();
         fd.append("file", compressed);
+        if (gps) {
+          fd.append("lat", String(gps.lat));
+          fd.append("lng", String(gps.lng));
+        }
         const res = await fetch("/api/album", { method: "POST", body: fd });
         if (res.ok) uploaded++;
         else lastErr = `Upload failed: ${res.status} ${(await res.text()).slice(0, 100)}`;

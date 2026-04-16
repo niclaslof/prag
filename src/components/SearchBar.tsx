@@ -63,7 +63,7 @@ export default function SearchBar({
 
   useEffect(() => {
     if (forceOpenNonce && forceOpenNonce > 0) {
-      setFiltersOpen(true);
+      setFiltersOpen((prev) => !prev);
     }
   }, [forceOpenNonce]);
 
