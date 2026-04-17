@@ -180,6 +180,7 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div className="hairline overflow-x-auto">
+                  <div className="min-w-[640px]">
                   {/* Table head */}
                   <div className="grid grid-cols-[minmax(0,2fr)_1.5fr_1fr_auto] gap-4 px-5 py-2.5 hairline-b" style={{ backgroundColor: "#f4f1ea" }}>
                     <div className="text-caption">Name</div>
@@ -214,6 +215,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
+                  </div>
                 </div>
               )}
             </section>
@@ -238,6 +240,7 @@ export default function AdminPage() {
                 </div>
               ) : (
                 <div className="hairline overflow-x-auto">
+                  <div className="min-w-[720px]">
                   <div className="grid grid-cols-[minmax(0,2fr)_2fr_auto_1fr_auto] gap-4 px-5 py-2.5 hairline-b" style={{ backgroundColor: "#f4f1ea" }}>
                     <div className="text-caption">Name</div>
                     <div className="text-caption">ID</div>
@@ -268,6 +271,7 @@ export default function AdminPage() {
                       </div>
                     </div>
                   ))}
+                  </div>
                 </div>
               )}
             </section>

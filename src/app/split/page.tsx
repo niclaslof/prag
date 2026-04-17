@@ -532,6 +532,22 @@ function SplitApp({
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  // Auto-refresh every 15 seconds so group members see new expenses live
+  // Skip refresh if user is on the add view (don't clobber their typing)
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (view !== "add" && !document.hidden) fetchData();
+    }, 15000);
+    return () => clearInterval(id);
+  }, [view, fetchData]);
+
+  // Also refresh when tab becomes visible again (e.g. back from Swish app)
+  useEffect(() => {
+    const handler = () => { if (!document.hidden) fetchData(); };
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, [fetchData]);
+
   // Keep splitWith in sync with members (but only on initial or when members change dramatically)
   useEffect(() => {
     setSplitWith(prev => {
