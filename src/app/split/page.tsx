@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import {
+  UtensilsCrossed, Car, Hotel, Ticket, ShoppingBag, Sparkles, CircleDot,
+  Coffee, Beer, Salad, Train,
+  Users as UsersIcon, Home as HomeIcon, BarChart3, Activity as ActivityIcon,
+  Plus, Settings as SettingsIcon, ArrowRight, Check, X, Share2, Upload, MapIcon,
+} from "lucide-react";
 
 // --- Types ---
 interface Expense {
@@ -34,28 +40,33 @@ function storageKey(env: Env, key: string): string {
   return env === "test" ? `split-test-${key}` : `split-${key}`;
 }
 
-const CATS = [
-  { id: "food", emoji: "🍽", label: "Food" },
-  { id: "transport", emoji: "🚕", label: "Transport" },
-  { id: "hotel", emoji: "🏨", label: "Hotel" },
-  { id: "activity", emoji: "🎟", label: "Activity" },
-  { id: "shopping", emoji: "🛍", label: "Shopping" },
-  { id: "spa", emoji: "🧖", label: "Spa" },
-  { id: "other", emoji: "💰", label: "Other" },
+type LucideIcon = React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+
+const CATS: { id: string; Icon: LucideIcon; label: string }[] = [
+  { id: "food", Icon: UtensilsCrossed, label: "Food" },
+  { id: "transport", Icon: Car, label: "Transport" },
+  { id: "hotel", Icon: Hotel, label: "Hotel" },
+  { id: "activity", Icon: Ticket, label: "Activity" },
+  { id: "shopping", Icon: ShoppingBag, label: "Shopping" },
+  { id: "spa", Icon: Sparkles, label: "Spa" },
+  { id: "other", Icon: CircleDot, label: "Other" },
 ];
 
-const PRESETS = [
-  { label: "☕ Coffee", cat: "food", amt: 120 },
-  { label: "🍺 Beer", cat: "food", amt: 70 },
-  { label: "🍽 Dinner", cat: "food", amt: 800 },
-  { label: "🥗 Lunch", cat: "food", amt: 400 },
-  { label: "🚕 Taxi", cat: "transport", amt: 250 },
-  { label: "🚇 Metro", cat: "transport", amt: 40 },
-  { label: "🎟 Entry", cat: "activity", amt: 250 },
-  { label: "🧖 Spa", cat: "spa", amt: 1500 },
+const PRESETS: { label: string; Icon: LucideIcon; cat: string; amt: number }[] = [
+  { label: "Coffee", Icon: Coffee, cat: "food", amt: 120 },
+  { label: "Beer", Icon: Beer, cat: "food", amt: 70 },
+  { label: "Dinner", Icon: UtensilsCrossed, cat: "food", amt: 800 },
+  { label: "Lunch", Icon: Salad, cat: "food", amt: 400 },
+  { label: "Taxi", Icon: Car, cat: "transport", amt: 250 },
+  { label: "Metro", Icon: Train, cat: "transport", amt: 40 },
+  { label: "Entry", Icon: Ticket, cat: "activity", amt: 250 },
+  { label: "Spa", Icon: Sparkles, cat: "spa", amt: 1500 },
 ];
 
-function catEmoji(id: string) { return CATS.find(c => c.id === id)?.emoji || "💰"; }
+function CatIcon({ id, size = 18, className = "" }: { id: string; size?: number; className?: string }) {
+  const Icon = CATS.find(c => c.id === id)?.Icon || CircleDot;
+  return <Icon size={size} strokeWidth={1.5} className={className} />;
+}
 
 // --- Setup screen (enter name + phone, shown once) ---
 function SetupScreen({ env, onDone, pendingGroupId }: { env: Env; onDone: (name: string, phone: string) => void; pendingGroupId: string | null }) {
@@ -567,7 +578,7 @@ function SplitApp({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: desc, amount: amt, currency, paidBy, splits, category, createdBy: myName }),
       });
-      setToast(`${catEmoji(category)} ${desc} — ${amt} ${currency}`);
+      setToast(`✓ ${desc} — ${amt} ${currency}`);
       setDesc(""); setAmount(""); setItems([]); setSplitMode("equal"); setView("home"); fetchData();
       setTimeout(() => setToast(""), 3000);
     } catch { /* ok */ }
@@ -721,7 +732,7 @@ function SplitApp({
             )}
             {expenses.slice(0, 8).map(e => (
               <div key={e.id} className="flex items-center gap-3 py-2.5 border-b border-stone-50 last:border-0">
-                <span className="text-xl w-8 text-center">{catEmoji(e.category)}</span>
+                <span className="w-8 flex items-center justify-center text-stone-500"><CatIcon id={e.category} /></span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{e.description}</p>
                   <p className="text-[0.65rem] text-stone-400">{e.paidBy} · {e.splits.length}p · {new Date(e.date).toLocaleDateString("sv-SE", { day: "numeric", month: "short" })}</p>
@@ -769,13 +780,16 @@ function SplitApp({
           <div>
             <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Quick add</p>
             <div className="grid grid-cols-4 gap-2">
-              {PRESETS.map(p => (
-                <button key={p.label} onClick={() => { setDesc(p.label.slice(2).trim()); setAmount(String(p.amt)); setCategory(p.cat); setCurrency("CZK"); }}
-                  className="py-2.5 rounded-2xl bg-stone-50 text-center cursor-pointer hover:bg-stone-100 transition-colors">
-                  <span className="text-xl block">{p.label.slice(0, 2)}</span>
-                  <span className="text-[0.6rem] text-stone-500 block mt-0.5">{p.label.slice(2).trim()}</span>
-                </button>
-              ))}
+              {PRESETS.map(p => {
+                const Icon = p.Icon;
+                return (
+                  <button key={p.label} onClick={() => { setDesc(p.label); setAmount(String(p.amt)); setCategory(p.cat); setCurrency("CZK"); }}
+                    className="py-3 rounded-2xl bg-stone-50 text-center cursor-pointer hover:bg-stone-100 transition-colors flex flex-col items-center gap-1">
+                    <Icon size={18} strokeWidth={1.5} className="text-stone-600" />
+                    <span className="text-[0.62rem] text-stone-500 block">{p.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -895,12 +909,16 @@ function SplitApp({
 
             {/* Category */}
             <div className="flex flex-wrap gap-1.5">
-              {CATS.map(c => (
-                <button key={c.id} onClick={() => setCategory(c.id)}
-                  className={`px-2.5 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all ${category === c.id ? "bg-stone-900 text-white" : "bg-stone-50 text-stone-500"}`}>
-                  {c.emoji} {c.label}
-                </button>
-              ))}
+              {CATS.map(c => {
+                const Icon = c.Icon;
+                return (
+                  <button key={c.id} onClick={() => setCategory(c.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer transition-all flex items-center gap-1.5 ${category === c.id ? "bg-stone-900 text-white" : "bg-stone-50 text-stone-500"}`}>
+                    <Icon size={13} strokeWidth={1.5} />
+                    {c.label}
+                  </button>
+                );
+              })}
             </div>
 
             <button onClick={handleAdd} disabled={
@@ -959,7 +977,7 @@ function SplitApp({
             <div className="space-y-2">
               {Object.entries(stats.byCategory).sort((a, b) => b[1] - a[1]).map(([cat, czk]) => (
                 <div key={cat} className="flex items-center gap-3">
-                  <span className="text-xl w-8 text-center">{catEmoji(cat)}</span>
+                  <span className="w-8 flex items-center justify-center text-stone-500"><CatIcon id={cat} /></span>
                   <span className="text-sm font-medium flex-1">{CATS.find(c => c.id === cat)?.label || cat}</span>
                   <span className="text-sm font-semibold tabular-nums">{Math.round(czk).toLocaleString()} CZK</span>
                   <span className="text-xs text-stone-400 w-10 text-right">{Math.round((czk / stats.totalCZK) * 100)}%</span>
@@ -1002,7 +1020,7 @@ function SplitApp({
 
       {/* Import contacts sheet (universal — works on ALL browsers) */}
       {showImportSheet && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setShowImportSheet(false)}>
+        <div className="fixed inset-0 z-[60] bg-black/40 flex items-end justify-center" onClick={() => setShowImportSheet(false)}>
           <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-1">Import contacts</h3>
             <p className="text-xs text-stone-400 mb-4">Choose how to add people to the group</p>
@@ -1263,9 +1281,9 @@ function SplitApp({
               })}
             </div>
             {/* Import contacts — multiple methods for all browsers */}
-            <button onClick={() => setShowImportSheet(true)}
+            <button onClick={() => { setShowMembers(false); setShowImportSheet(true); }}
               className="w-full mb-3 py-2.5 rounded-2xl bg-stone-50 text-stone-700 border border-stone-200 text-sm font-medium cursor-pointer hover:bg-stone-100 transition-colors flex items-center justify-center gap-2">
-              Import contacts
+              <Upload size={14} strokeWidth={1.5} /> Import contacts
             </button>
             {importStatus && <p className="text-[0.65rem] text-stone-500 text-center mb-2">{importStatus}</p>}
 
