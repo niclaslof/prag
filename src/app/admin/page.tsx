@@ -89,56 +89,76 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 text-stone-900 font-[family-name:var(--font-inter)]">
+    <div className="min-h-screen text-[#1a1715] font-[family-name:var(--font-inter)]" style={{ backgroundColor: "#faf9f5" }}>
       {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-stone-900 text-white text-sm font-medium shadow-xl">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-[#1a1715] text-[#faf9f5] text-xs font-mono-data shadow-lg">
           {toast}
         </div>
       )}
 
-      <header className="sticky top-0 z-40 bg-white border-b border-stone-200 px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold">Walli Split — Admin</h1>
-            <p className="text-xs text-stone-400">Manage users, groups and data</p>
-          </div>
+      {/* Header */}
+      <header className="sticky top-0 z-40 hairline-b" style={{ backgroundColor: "#faf9f5" }}>
+        <div className="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex rounded-xl overflow-hidden border border-stone-200">
+            <div className="w-7 h-7 flex items-center justify-center hairline font-mono-data text-[11px] font-bold">W</div>
+            <div>
+              <h1 className="font-display text-base font-semibold tracking-tight">Walli Split</h1>
+              <p className="text-[10px] text-[#6b665e] font-mono-data">admin · {env}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex hairline overflow-hidden">
               {(["prod", "test"] as Env[]).map(e => (
                 <button key={e} onClick={() => setEnv(e)}
-                  className={`px-4 py-2 text-xs font-semibold cursor-pointer transition-colors ${env === e
-                    ? e === "test" ? "bg-amber-500 text-white" : "bg-stone-900 text-white"
-                    : "bg-white text-stone-500"}`}>
-                  {e === "prod" ? "🚀 Prod" : "🧪 Test"}
+                  className={`px-3 py-1.5 text-[10px] font-mono-data uppercase tracking-wider cursor-pointer transition-colors ${env === e
+                    ? "bg-[#1a1715] text-[#faf9f5]"
+                    : "bg-transparent text-[#6b665e] hover:bg-[#f4f1ea]"}`}>
+                  {e}
                 </button>
               ))}
             </div>
-            <a href="/split" className="px-3 py-2 rounded-xl bg-stone-100 text-xs font-medium text-stone-600 hover:bg-stone-200 cursor-pointer">← Split app</a>
+            <a href="/split" className="px-3 py-1.5 hairline text-[10px] font-mono-data uppercase tracking-wider text-[#6b665e] hover:bg-[#f4f1ea] cursor-pointer">
+              ← split
+            </a>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-6 space-y-6">
+      <main className="max-w-6xl mx-auto px-8 py-8 space-y-10">
         {loading && <div className="text-center py-12"><div className="w-6 h-6 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin mx-auto" /></div>}
 
         {!loading && (
           <>
-            {/* Overview cards */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 rounded-2xl bg-white border border-stone-200">
-                <p className="text-xs text-stone-400 uppercase tracking-wider">Users</p>
-                <p className="text-2xl font-bold mt-1">{users.length}</p>
+            {/* Overview — typographic stats */}
+            <section>
+              <p className="text-caption mb-5">Overview</p>
+              <div className="grid grid-cols-4 gap-8">
+                <div>
+                  <p className="font-display text-4xl font-semibold">{users.length}</p>
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] font-mono-data text-[#6b665e]">
+                    <span className="status-dot status-active" />users
+                  </div>
+                </div>
+                <div>
+                  <p className="font-display text-4xl font-semibold">{groups.length}</p>
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] font-mono-data text-[#6b665e]">
+                    <span className="status-dot status-active" />groups
+                  </div>
+                </div>
+                <div>
+                  <p className="font-display text-4xl font-semibold">{stats?.expenseCount || 0}</p>
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] font-mono-data text-[#6b665e]">
+                    <span className="status-dot status-active" />expenses
+                  </div>
+                </div>
+                <div>
+                  <p className="font-display text-4xl font-semibold font-mono-data">{(stats?.totalCZK || 0).toLocaleString()}</p>
+                  <div className="mt-1 flex items-center gap-1.5 text-[11px] font-mono-data text-[#6b665e]">
+                    <span>CZK · total volume</span>
+                  </div>
+                </div>
               </div>
-              <div className="p-4 rounded-2xl bg-white border border-stone-200">
-                <p className="text-xs text-stone-400 uppercase tracking-wider">Groups</p>
-                <p className="text-2xl font-bold mt-1">{groups.length}</p>
-              </div>
-              <div className="p-4 rounded-2xl bg-white border border-stone-200">
-                <p className="text-xs text-stone-400 uppercase tracking-wider">Expenses</p>
-                <p className="text-2xl font-bold mt-1">{stats?.expenseCount || 0}</p>
-                <p className="text-xs text-stone-400">{stats?.totalCZK?.toLocaleString() || 0} CZK</p>
-              </div>
-            </div>
+            </section>
 
             {/* Users table */}
             <div className="rounded-2xl bg-white border border-stone-200 overflow-hidden">
