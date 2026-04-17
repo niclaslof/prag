@@ -161,8 +161,13 @@ function SetupScreen({ env, onDone, pendingGroupId }: { env: Env; onDone: (name:
           <button
             onClick={submit}
             disabled={!canSubmit || submitting}
-            className="w-full py-3 rounded-2xl bg-stone-900 text-white text-sm font-semibold disabled:opacity-30 cursor-pointer hover:bg-stone-800 transition-colors"
-          >{submitting ? "Registering…" : "Continue"}</button>
+            className="w-full py-3 rounded-2xl bg-[#c96442] text-white text-sm font-semibold disabled:opacity-30 cursor-pointer hover:bg-[#a84f31] transition-colors flex items-center justify-center gap-2"
+          >
+            {submitting ? "Registering…" : (<>Continue <kbd className="kbd" style={{ backgroundColor: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.2)", color: "white" }}>↵</kbd></>)}
+          </button>
+          <p className="text-center text-[10px] font-mono-data text-stone-400 mt-4">
+            v2.1.0 · no login required
+          </p>
         </div>
       </div>
     </div>
@@ -1344,6 +1349,26 @@ function SplitApp({
           </div>
         </div>
       )}
+
+      {/* Build footer — subtle tech identity */}
+      <div className="px-4 pt-8 pb-6 text-center">
+        <div className="flex items-center justify-center gap-2 text-[10px] font-mono-data text-[#6b665e]/60">
+          <span>walli-split</span>
+          <span>·</span>
+          <span>v2.1.0</span>
+          <span>·</span>
+          <span className="flex items-center gap-1">
+            <span className="status-dot status-active" style={{ marginRight: 0 }} />
+            <span>online</span>
+          </span>
+          {env === "test" && (
+            <>
+              <span>·</span>
+              <span style={{ color: "#b8863b" }}>test env</span>
+            </>
+          )}
+        </div>
+      </div>
 
       {/* Bottom nav — typographic with Lucide pictograms */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md hairline-t max-w-lg mx-auto" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
