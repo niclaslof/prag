@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 
 // --- Types ---
 interface Expense {
@@ -380,6 +380,70 @@ function SplitApp({
         setTimeout(() => setImportStatus(""), 5000);
       }
     }
+  };
+
+  // --- Universal contact import (works on ALL browsers) ---
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showImportSheet, setShowImportSheet] = useState(false);
+  const [pasteText, setPasteText] = useState("");
+
+  /** Parse vCard (.vcf) file content → array of {name, phone} */
+  const parseVCard = (text: string): { name: string; phone: string }[] => {
+    const contacts: { name: string; phone: string }[] = [];
+    const cards = text.split("BEGIN:VCARD");
+    for (const card of cards) {
+      let name = "";
+      let phone = "";
+      for (const line of card.split("\n")) {
+        const l = line.trim();
+        if (l.startsWith("FN:")) name = l.slice(3).trim();
+        if (l.startsWith("FN;")) name = l.split(":").slice(1).join(":").trim();
+        if (l.startsWith("TEL") && l.includes(":")) {
+          phone = l.split(":").slice(1).join(":").replace(/[^\d+]/g, "").trim();
+        }
+      }
+      if (name && phone) contacts.push({ name, phone });
+      else if (name) contacts.push({ name, phone: "" });
+    }
+    return contacts;
+  };
+
+  /** Parse CSV/text: "name, phone" per line */
+  const parseText = (text: string): { name: string; phone: string }[] => {
+    return text.split("\n").map(line => {
+      const parts = line.split(/[,;\t]/).map(s => s.trim());
+      const name = parts[0] || "";
+      const phone = (parts[1] || "").replace(/[^\d+]/g, "");
+      return { name, phone };
+    }).filter(c => c.name.length >= 2);
+  };
+
+  const handleFileImport = async (file: File) => {
+    const text = await file.text();
+    const contacts = file.name.endsWith(".vcf") ? parseVCard(text) : parseText(text);
+    await addImportedContacts(contacts);
+  };
+
+  const addImportedContacts = async (contacts: { name: string; phone: string }[]) => {
+    let added = 0;
+    for (const c of contacts) {
+      if (c.phone && c.phone.length >= 6) {
+        await fetch(apiUrl("/api/users", env), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: c.name, phone: c.phone }),
+        });
+        added++;
+      } else if (c.name && !localMembers.includes(c.name)) {
+        localMembers.push(c.name);
+      }
+    }
+    saveLocalMembers([...localMembers]);
+    fetchData();
+    setShowImportSheet(false);
+    setPasteText("");
+    setToast(`Added ${contacts.length} contacts (${added} with phone)`);
+    setTimeout(() => setToast(""), 3000);
   };
 
   // Add registered member by phone (for "I know Tommy's number")
@@ -936,6 +1000,63 @@ function SplitApp({
         </div>
       )}
 
+      {/* Import contacts sheet (universal — works on ALL browsers) */}
+      {showImportSheet && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setShowImportSheet(false)}>
+          <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-1">Import contacts</h3>
+            <p className="text-xs text-stone-400 mb-4">Choose how to add people to the group</p>
+
+            <div className="space-y-2">
+              {/* Method 1: Native contact picker (Chrome Android only) */}
+              {canImportContacts && (
+                <button onClick={() => { setShowImportSheet(false); importContacts(); }}
+                  className="w-full text-left p-3 rounded-2xl bg-stone-50 hover:bg-stone-100 cursor-pointer transition-colors">
+                  <div className="text-sm font-medium">Pick from phone contacts</div>
+                  <div className="text-[0.65rem] text-stone-400 mt-0.5">Select multiple contacts directly. Chrome Android only.</div>
+                </button>
+              )}
+
+              {/* Method 2: Import .vcf file (UNIVERSAL) */}
+              <button onClick={() => { setShowImportSheet(false); fileInputRef.current?.click(); }}
+                className="w-full text-left p-3 rounded-2xl bg-stone-50 hover:bg-stone-100 cursor-pointer transition-colors">
+                <div className="text-sm font-medium">Import from file (.vcf)</div>
+                <div className="text-[0.65rem] text-stone-400 mt-0.5">
+                  Works on ALL phones. Export contacts from your phone as .vcf first:
+                </div>
+                <div className="text-[0.6rem] text-stone-500 mt-1.5 space-y-0.5">
+                  <div><strong>iPhone:</strong> Contacts → tap contact → Share → Save to Files → pick here</div>
+                  <div><strong>Android:</strong> Contacts → ⋮ → Export → .vcf → pick here</div>
+                </div>
+              </button>
+
+              {/* Method 3: Paste text (UNIVERSAL) */}
+              <div className="p-3 rounded-2xl bg-stone-50">
+                <div className="text-sm font-medium mb-2">Paste names & phones</div>
+                <textarea
+                  value={pasteText}
+                  onChange={e => setPasteText(e.target.value)}
+                  placeholder={"Tommy, +46701234567\nSara, +46709876543\nLisa"}
+                  rows={4}
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs font-mono outline-none resize-none focus:border-stone-900"
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-[0.6rem] text-stone-400">One per line: name, phone (phone optional)</span>
+                  <button
+                    onClick={() => { addImportedContacts(parseText(pasteText)); setPasteText(""); }}
+                    disabled={!pasteText.trim()}
+                    className="px-3 py-1.5 rounded-xl bg-stone-900 text-white text-xs font-semibold cursor-pointer disabled:opacity-30">
+                    Import
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <button onClick={() => setShowImportSheet(false)} className="w-full py-2 mt-3 text-sm text-stone-400 cursor-pointer">Cancel</button>
+          </div>
+        </div>
+      )}
+
       {/* Settle confirm */}
       {settleTarget && (() => {
         const recipient = registeredUsers.find(u => u.name === settleTarget.to);
@@ -1141,12 +1262,16 @@ function SplitApp({
                 );
               })}
             </div>
-            {/* Import contacts — works best on Chrome Android */}
-            <button onClick={importContacts}
-              className="w-full mb-3 py-2.5 rounded-2xl bg-blue-50 text-blue-700 border-2 border-blue-200 text-sm font-semibold cursor-pointer hover:bg-blue-100 transition-colors flex items-center justify-center gap-2">
-              📇 Import from phone contacts
+            {/* Import contacts — multiple methods for all browsers */}
+            <button onClick={() => setShowImportSheet(true)}
+              className="w-full mb-3 py-2.5 rounded-2xl bg-stone-50 text-stone-700 border border-stone-200 text-sm font-medium cursor-pointer hover:bg-stone-100 transition-colors flex items-center justify-center gap-2">
+              Import contacts
             </button>
             {importStatus && <p className="text-[0.65rem] text-stone-500 text-center mb-2">{importStatus}</p>}
+
+            {/* Hidden file input for .vcf/.csv */}
+            <input ref={fileInputRef} type="file" accept=".vcf,.csv,.txt" className="hidden"
+              onChange={e => { if (e.target.files?.[0]) handleFileImport(e.target.files[0]); e.target.value = ""; }} />
 
             {/* Quick-add with phone (registered user) */}
             <div className="p-3 rounded-2xl bg-stone-50 mb-3">
