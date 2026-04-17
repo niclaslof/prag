@@ -1,9 +1,13 @@
 import { put } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 
-const GROUP = "walliprag";
+function prefix(env: string | null): string {
+  const suffix = env === "test" ? "-test" : "";
+  return `split${suffix}/walliprag/settlements/`;
+}
 
 export async function POST(request: NextRequest) {
+  const env = new URL(request.url).searchParams.get("env");
   const body = await request.json();
   const { from, to, amount, currency, method, date } = body as {
     from?: string; to?: string; amount?: number;
@@ -26,7 +30,7 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    await put(`split/${GROUP}/settlements/${settlement.id}.json`, JSON.stringify(settlement), {
+    await put(`${prefix(env)}${settlement.id}.json`, JSON.stringify(settlement), {
       access: "public",
       addRandomSuffix: false,
       contentType: "application/json",

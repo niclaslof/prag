@@ -1,12 +1,16 @@
 import { put, list } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 
-const GROUP = "walliprag"; // single group for this trip
-
 const CATEGORIES_EMOJI: Record<string, string> = {
   food: "🍽", transport: "🚕", hotel: "🏨", activity: "🎟",
   shopping: "🛍", spa: "🧖", other: "💰",
 };
+
+/** Env-aware prefix. Test and prod are fully isolated. */
+function prefix(env: string | null, type: "expenses" | "settlements"): string {
+  const suffix = env === "test" ? "-test" : "";
+  return `split${suffix}/walliprag/${type}/`;
+}
 
 export interface Expense {
   id: string;
@@ -36,6 +40,7 @@ export interface Settlement {
 
 // POST = create expense
 export async function POST(request: NextRequest) {
+  const env = new URL(request.url).searchParams.get("env");
   const body = (await request.json()) as Partial<Expense>;
 
   if (!body.description || !body.amount || !body.paidBy || !body.splits?.length) {
@@ -58,7 +63,7 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    await put(`split/${GROUP}/expenses/${expense.id}.json`, JSON.stringify(expense), {
+    await put(`${prefix(env, "expenses")}${expense.id}.json`, JSON.stringify(expense), {
       access: "public",
       addRandomSuffix: false,
       contentType: "application/json",
@@ -70,9 +75,10 @@ export async function POST(request: NextRequest) {
 }
 
 // GET = list all expenses + calculate balances
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const env = new URL(request.url).searchParams.get("env");
   // Fetch expenses
-  const { blobs: expBlobs } = await list({ prefix: `split/${GROUP}/expenses/` });
+  const { blobs: expBlobs } = await list({ prefix: prefix(env, "expenses") });
   const expenses: Expense[] = [];
   for (const b of expBlobs) {
     try {
@@ -83,7 +89,7 @@ export async function GET() {
   expenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Fetch settlements
-  const { blobs: setBlobs } = await list({ prefix: `split/${GROUP}/settlements/` });
+  const { blobs: setBlobs } = await list({ prefix: prefix(env, "settlements") });
   const settlements: Settlement[] = [];
   for (const b of setBlobs) {
     try {
