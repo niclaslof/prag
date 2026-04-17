@@ -309,12 +309,19 @@ function SplitApp({
   const [newMember, setNewMember] = useState("");
   const [showMembers, setShowMembers] = useState(false);
 
-  // Computed members list: merge registered users + local additions + me
-  const members = Array.from(new Set([
-    myName,
-    ...registeredUsers.map(u => u.name),
-    ...localMembers,
-  ]));
+  // Computed members list: merge registered + local + me, prefer canonical name
+  // If local "tommy" and registered "Tommy" exist, use the registered version (dedupes case-insensitively)
+  const members = (() => {
+    const seen = new Map<string, string>(); // lowercase → canonical
+    // Registered users first (they are the source of truth)
+    registeredUsers.forEach(u => { seen.set(u.name.toLowerCase(), u.name); });
+    // Then me + local additions (only if not already registered)
+    [myName, ...localMembers].forEach(n => {
+      const key = n.toLowerCase();
+      if (!seen.has(key)) seen.set(key, n);
+    });
+    return Array.from(seen.values());
+  })();
 
   const saveLocalMembers = (m: string[]) => {
     setLocalMembers(m);
@@ -328,6 +335,73 @@ function SplitApp({
     saveLocalMembers(localMembers.filter(m => m !== name));
   };
 
+  // Contact import via Web Contact Picker API (Chrome Android)
+  const [importStatus, setImportStatus] = useState("");
+  const canImportContacts = typeof window !== "undefined" &&
+    "contacts" in navigator &&
+    "ContactsManager" in window;
+
+  const importContacts = async () => {
+    if (!canImportContacts) {
+      setImportStatus("Your browser doesn't support contact import. Only works on Chrome for Android. Add manually instead.");
+      setTimeout(() => setImportStatus(""), 5000);
+      return;
+    }
+    try {
+      const props = ["name", "tel"];
+      // @ts-expect-error — Contact Picker API not in TS lib yet
+      const contacts = await navigator.contacts.select(props, { multiple: true });
+      const added: string[] = [];
+      for (const c of contacts) {
+        const name = (c.name?.[0] || "").trim();
+        const phone = (c.tel?.[0] || "").replace(/[^\d+]/g, "");
+        if (!name) continue;
+        if (phone) {
+          // Register the contact with phone — they become a real group member
+          await fetch(apiUrl("/api/users", env), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, phone }),
+          });
+        } else {
+          // Name only — add as local member
+          if (!localMembers.includes(name)) localMembers.push(name);
+        }
+        added.push(name);
+      }
+      saveLocalMembers([...localMembers]);
+      fetchData();
+      setImportStatus(`✅ Added ${added.length} contacts`);
+      setTimeout(() => setImportStatus(""), 3000);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!msg.toLowerCase().includes("cancel")) {
+        setImportStatus(`Import failed: ${msg}`);
+        setTimeout(() => setImportStatus(""), 5000);
+      }
+    }
+  };
+
+  // Add registered member by phone (for "I know Tommy's number")
+  const [quickAddName, setQuickAddName] = useState("");
+  const [quickAddPhone, setQuickAddPhone] = useState("");
+  const quickAddRegistered = async () => {
+    if (!quickAddName.trim() || !quickAddPhone.trim()) return;
+    try {
+      const res = await fetch(apiUrl("/api/users", env), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: quickAddName.trim(), phone: quickAddPhone.trim() }),
+      });
+      if (res.ok) {
+        setQuickAddName(""); setQuickAddPhone("");
+        fetchData();
+        setToast("✅ Added with Swish");
+        setTimeout(() => setToast(""), 2000);
+      }
+    } catch { /* ok */ }
+  };
+
   // Add expense form
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
@@ -337,6 +411,8 @@ function SplitApp({
   const [category, setCategory] = useState("food");
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState("");
+  const [splitMode, setSplitMode] = useState<"equal" | "items">("equal");
+  const [items, setItems] = useState<{ name: string; price: string; assignedTo: string[] }[]>([]);
 
   // Settle
   const [settleTarget, setSettleTarget] = useState<Balance | null>(null);
@@ -393,10 +469,34 @@ function SplitApp({
   };
 
   const handleAdd = async () => {
-    if (!desc || !amount || !paidBy || splitWith.length === 0) return;
+    if (!desc || !paidBy) return;
+
+    let amt: number;
+    let splits: { name: string; share: number }[];
+
+    if (splitMode === "items") {
+      // Itemized: each item has a price assigned to N people
+      const validItems = items.filter(i => i.name.trim() && parseFloat(i.price) > 0 && i.assignedTo.length > 0);
+      if (validItems.length === 0) return;
+      amt = validItems.reduce((sum, i) => sum + parseFloat(i.price), 0);
+      // Per-person share = sum of their assigned items
+      const shares: Record<string, number> = {};
+      for (const item of validItems) {
+        const per = parseFloat(item.price) / item.assignedTo.length;
+        for (const person of item.assignedTo) {
+          shares[person] = (shares[person] || 0) + per;
+        }
+      }
+      splits = Object.entries(shares).map(([name, share]) => ({
+        name, share: Math.round(share * 100) / 100,
+      }));
+    } else {
+      if (!amount || splitWith.length === 0) return;
+      amt = parseFloat(amount);
+      splits = splitWith.map(name => ({ name, share: Math.round(amt / splitWith.length * 100) / 100 }));
+    }
+
     setSubmitting(true);
-    const amt = parseFloat(amount);
-    const splits = splitWith.map(name => ({ name, share: Math.round(amt / splitWith.length * 100) / 100 }));
     try {
       await fetch(apiUrl(`/api/split?group=${encodeURIComponent(currentGroupId)}`, env), {
         method: "POST",
@@ -404,7 +504,7 @@ function SplitApp({
         body: JSON.stringify({ description: desc, amount: amt, currency, paidBy, splits, category, createdBy: myName }),
       });
       setToast(`${catEmoji(category)} ${desc} — ${amt} ${currency}`);
-      setDesc(""); setAmount(""); setView("home"); fetchData();
+      setDesc(""); setAmount(""); setItems([]); setSplitMode("equal"); setView("home"); fetchData();
       setTimeout(() => setToast(""), 3000);
     } catch { /* ok */ }
     setSubmitting(false);
@@ -621,8 +721,14 @@ function SplitApp({
               className="w-full px-4 py-3 rounded-2xl bg-stone-50 border-2 border-transparent text-sm font-medium outline-none focus:border-stone-900 transition-colors" />
 
             <div className="flex gap-2">
-              <input type="number" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0"
-                className="flex-1 px-4 py-3 rounded-2xl bg-stone-50 border-2 border-transparent text-lg font-bold outline-none focus:border-stone-900 transition-colors tabular-nums" />
+              {splitMode === "equal" ? (
+                <input type="number" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0"
+                  className="flex-1 px-4 py-3 rounded-2xl bg-stone-50 border-2 border-transparent text-lg font-bold outline-none focus:border-stone-900 transition-colors tabular-nums" />
+              ) : (
+                <div className="flex-1 px-4 py-3 rounded-2xl bg-stone-50 text-lg font-bold tabular-nums text-stone-400">
+                  {items.reduce((s, i) => s + (parseFloat(i.price) || 0), 0).toFixed(0) || "0"}
+                </div>
+              )}
               <div className="flex rounded-2xl overflow-hidden border-2 border-stone-100">
                 {(["CZK", "SEK"] as const).map(c => (
                   <button key={c} onClick={() => setCurrency(c)}
@@ -644,21 +750,84 @@ function SplitApp({
               </div>
             </div>
 
-            {/* Split between */}
-            <div>
-              <p className="text-xs font-semibold text-stone-400 mb-1.5">Split between</p>
-              <div className="flex flex-wrap gap-1.5">
-                {members.map(m => (
-                  <button key={m} onClick={() => toggleSplit(m)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-all ${splitWith.includes(m) ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-400 line-through"}`}>
-                    {m}
-                  </button>
-                ))}
-              </div>
-              {splitWith.length > 0 && amount && (
-                <p className="text-xs text-stone-400 mt-1.5">{Math.round(parseFloat(amount) / splitWith.length)} {currency} each</p>
-              )}
+            {/* Split mode toggle */}
+            <div className="flex gap-1 p-1 rounded-full bg-stone-100">
+              <button onClick={() => setSplitMode("equal")}
+                className={`flex-1 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${splitMode === "equal" ? "bg-white shadow-sm text-stone-900" : "text-stone-500"}`}>
+                ÷ Equal
+              </button>
+              <button onClick={() => setSplitMode("items")}
+                className={`flex-1 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${splitMode === "items" ? "bg-white shadow-sm text-stone-900" : "text-stone-500"}`}>
+                🧾 By item
+              </button>
             </div>
+
+            {splitMode === "equal" && (
+              <div>
+                <p className="text-xs font-semibold text-stone-400 mb-1.5">Split between</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {members.map(m => (
+                    <button key={m} onClick={() => toggleSplit(m)}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium cursor-pointer transition-all ${splitWith.includes(m) ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-400 line-through"}`}>
+                      {m}
+                    </button>
+                  ))}
+                </div>
+                {splitWith.length > 0 && amount && (
+                  <p className="text-xs text-stone-400 mt-1.5">{Math.round(parseFloat(amount) / splitWith.length)} {currency} each</p>
+                )}
+              </div>
+            )}
+
+            {splitMode === "items" && (
+              <div className="space-y-3">
+                <p className="text-xs font-semibold text-stone-400">Items</p>
+                {items.map((item, i) => (
+                  <div key={i} className="p-3 rounded-2xl bg-stone-50 space-y-2">
+                    <div className="flex gap-2">
+                      <input type="text" value={item.name}
+                        onChange={e => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, name: e.target.value } : it))}
+                        placeholder="Item (e.g. Pizza)"
+                        className="flex-1 px-3 py-2 rounded-xl bg-white text-sm outline-none border-2 border-transparent focus:border-stone-900" />
+                      <input type="number" inputMode="decimal" value={item.price}
+                        onChange={e => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, price: e.target.value } : it))}
+                        placeholder="0"
+                        className="w-20 px-3 py-2 rounded-xl bg-white text-sm outline-none border-2 border-transparent focus:border-stone-900 tabular-nums" />
+                      <button onClick={() => setItems(prev => prev.filter((_, idx) => idx !== i))}
+                        className="px-2 text-red-400 cursor-pointer">✕</button>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {members.map(m => (
+                        <button key={m}
+                          onClick={() => setItems(prev => prev.map((it, idx) => idx === i ? {
+                            ...it,
+                            assignedTo: it.assignedTo.includes(m)
+                              ? it.assignedTo.filter(x => x !== m)
+                              : [...it.assignedTo, m],
+                          } : it))}
+                          className={`px-2 py-1 rounded-full text-[0.62rem] font-medium cursor-pointer transition-colors ${item.assignedTo.includes(m) ? "bg-stone-900 text-white" : "bg-white text-stone-400 border border-stone-200"}`}>
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                    {item.assignedTo.length > 0 && parseFloat(item.price) > 0 && (
+                      <p className="text-[0.62rem] text-stone-400">
+                        {Math.round(parseFloat(item.price) / item.assignedTo.length)} {currency} each
+                      </p>
+                    )}
+                  </div>
+                ))}
+                <button onClick={() => setItems(prev => [...prev, { name: "", price: "", assignedTo: [] }])}
+                  className="w-full py-2 rounded-2xl bg-stone-100 text-stone-600 text-sm font-medium cursor-pointer hover:bg-stone-200 transition-colors">
+                  + Add item
+                </button>
+                {items.length > 0 && (
+                  <p className="text-xs text-stone-500 text-right">
+                    Total: {items.reduce((s, i) => s + (parseFloat(i.price) || 0), 0).toFixed(0)} {currency}
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Category */}
             <div className="flex flex-wrap gap-1.5">
@@ -670,7 +839,13 @@ function SplitApp({
               ))}
             </div>
 
-            <button onClick={handleAdd} disabled={submitting || !desc || !amount || splitWith.length === 0}
+            <button onClick={handleAdd} disabled={
+              submitting || !desc || (
+                splitMode === "equal"
+                  ? (!amount || splitWith.length === 0)
+                  : items.filter(i => i.name.trim() && parseFloat(i.price) > 0 && i.assignedTo.length > 0).length === 0
+              )
+            }
               className="w-full py-3.5 rounded-2xl bg-stone-900 text-white text-sm font-semibold cursor-pointer hover:bg-stone-800 disabled:opacity-30 transition-colors">
               {submitting ? "Adding…" : "Add expense"}
             </button>
@@ -966,13 +1141,42 @@ function SplitApp({
                 );
               })}
             </div>
-            <div className="flex gap-2">
-              <input type="text" value={newMember} onChange={e => setNewMember(e.target.value)} placeholder="Add person (name only)…"
-                onKeyDown={e => e.key === "Enter" && addMember()}
-                className="flex-1 px-4 py-2.5 rounded-2xl bg-stone-50 text-sm outline-none border-2 border-transparent focus:border-stone-900" />
-              <button onClick={addMember} disabled={!newMember.trim()} className="px-4 py-2.5 rounded-2xl bg-stone-900 text-white text-sm font-semibold cursor-pointer disabled:opacity-30">Add</button>
+            {/* Import contacts — works best on Chrome Android */}
+            <button onClick={importContacts}
+              className="w-full mb-3 py-2.5 rounded-2xl bg-blue-50 text-blue-700 border-2 border-blue-200 text-sm font-semibold cursor-pointer hover:bg-blue-100 transition-colors flex items-center justify-center gap-2">
+              📇 Import from phone contacts
+            </button>
+            {importStatus && <p className="text-[0.65rem] text-stone-500 text-center mb-2">{importStatus}</p>}
+
+            {/* Quick-add with phone (registered user) */}
+            <div className="p-3 rounded-2xl bg-stone-50 mb-3">
+              <p className="text-[0.62rem] font-semibold text-stone-500 uppercase tracking-wider mb-2">Add with Swish number</p>
+              <div className="space-y-2">
+                <input type="text" value={quickAddName} onChange={e => setQuickAddName(e.target.value)}
+                  placeholder="Name"
+                  className="w-full px-3 py-2 rounded-xl bg-white text-sm outline-none border-2 border-transparent focus:border-stone-900" />
+                <div className="flex gap-2">
+                  <input type="tel" value={quickAddPhone} onChange={e => setQuickAddPhone(e.target.value)}
+                    placeholder="Phone (e.g. +46701234567)"
+                    onKeyDown={e => e.key === "Enter" && quickAddRegistered()}
+                    className="flex-1 px-3 py-2 rounded-xl bg-white text-sm outline-none border-2 border-transparent focus:border-stone-900" />
+                  <button onClick={quickAddRegistered} disabled={!quickAddName.trim() || !quickAddPhone.trim()}
+                    className="px-3 py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold cursor-pointer disabled:opacity-30">Add</button>
+                </div>
+              </div>
             </div>
-            <p className="text-[0.65rem] text-stone-400 mt-2">Ask them to register via this link to enable Swish.</p>
+
+            {/* Name-only add (local member) */}
+            <div>
+              <p className="text-[0.62rem] font-semibold text-stone-500 uppercase tracking-wider mb-2">Or just a name</p>
+              <div className="flex gap-2">
+                <input type="text" value={newMember} onChange={e => setNewMember(e.target.value)} placeholder="Name only (no Swish)"
+                  onKeyDown={e => e.key === "Enter" && addMember()}
+                  className="flex-1 px-4 py-2.5 rounded-2xl bg-stone-50 text-sm outline-none border-2 border-transparent focus:border-stone-900" />
+                <button onClick={addMember} disabled={!newMember.trim()} className="px-4 py-2.5 rounded-2xl bg-stone-900 text-white text-sm font-semibold cursor-pointer disabled:opacity-30">Add</button>
+              </div>
+              <p className="text-[0.6rem] text-stone-400 mt-2">They can register themselves later to enable Swish (we&apos;ll auto-merge by name).</p>
+            </div>
             <button onClick={() => setShowMembers(false)} className="w-full py-2 mt-4 text-sm text-stone-400 cursor-pointer">Close</button>
           </div>
         </div>
