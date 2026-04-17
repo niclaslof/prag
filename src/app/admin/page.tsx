@@ -160,37 +160,63 @@ export default function AdminPage() {
               </div>
             </section>
 
-            {/* Users table */}
-            <div className="rounded-2xl bg-white border border-stone-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-stone-100 flex items-center justify-between">
-                <h2 className="text-sm font-bold">Users ({users.length})</h2>
-                <span className={`px-2 py-0.5 rounded-full text-[0.6rem] font-bold uppercase ${env === "test" ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}>
-                  {env}
-                </span>
+            {/* Users table — data-dense, professional */}
+            <section>
+              <div className="flex items-end justify-between mb-4">
+                <div>
+                  <p className="text-caption mb-1">Users</p>
+                  <h2 className="font-display text-2xl font-semibold">Registered accounts</h2>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] font-mono-data text-[#6b665e]">
+                  <span>GET /api/users?env={env}</span>
+                  <span>· {users.length} rows</span>
+                </div>
               </div>
-              {users.length === 0 && <p className="p-5 text-sm text-stone-400">No users registered</p>}
-              <div className="divide-y divide-stone-100">
-                {users.map(u => (
-                  <div key={u.phone} className="px-5 py-3 flex items-center gap-3 hover:bg-stone-50">
-                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
-                      style={{ backgroundColor: u.color }}>
-                      {u.avatar}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">{u.name}{u.deleted ? " [DELETED]" : ""}</p>
-                      <p className="text-xs text-stone-400">{u.phone}</p>
-                    </div>
-                    <p className="text-[0.6rem] text-stone-400 shrink-0">
-                      {new Date(u.createdAt).toLocaleDateString("sv-SE")}
-                    </p>
-                    <button onClick={() => { setEditUser(u); setEditName(u.name); setEditPhone(u.phone); }}
-                      className="px-2.5 py-1 rounded-lg bg-stone-100 text-xs font-medium text-stone-600 cursor-pointer hover:bg-stone-200">Edit</button>
-                    <button onClick={() => deleteUser(u.phone)}
-                      className="px-2.5 py-1 rounded-lg bg-red-50 text-xs font-medium text-red-600 cursor-pointer hover:bg-red-100">Delete</button>
+
+              {users.length === 0 ? (
+                <div className="hairline p-12 text-center">
+                  <p className="text-caption text-[#6b665e]">No records</p>
+                  <p className="text-[11px] font-mono-data text-[#6b665e]/70 mt-2">POST /api/users to register</p>
+                </div>
+              ) : (
+                <div className="hairline overflow-hidden">
+                  {/* Table head */}
+                  <div className="grid grid-cols-[minmax(0,2fr)_1.5fr_1fr_auto] gap-4 px-5 py-2.5 hairline-b" style={{ backgroundColor: "#f4f1ea" }}>
+                    <div className="text-caption">Name</div>
+                    <div className="text-caption">Phone</div>
+                    <div className="text-caption">Created</div>
+                    <div className="text-caption text-right">Actions</div>
                   </div>
-                ))}
-              </div>
-            </div>
+                  {/* Rows */}
+                  {users.map((u, idx) => (
+                    <div key={u.phone}
+                      className={`grid grid-cols-[minmax(0,2fr)_1.5fr_1fr_auto] gap-4 px-5 py-3 items-center hover:bg-[#f4f1ea]/50 transition-colors ${idx !== users.length - 1 ? "hairline-b" : ""}`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <span className="w-6 h-6 flex items-center justify-center text-[10px] font-semibold text-white shrink-0" style={{ backgroundColor: u.color, borderRadius: "3px" }}>
+                          {u.avatar}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-[13px] font-medium truncate flex items-center gap-1.5">
+                            <span className={`status-dot ${u.deleted ? "status-error" : "status-active"}`} />
+                            {u.name}{u.deleted && <span className="text-[10px] font-mono-data text-[#9e4444]">[deleted]</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="font-mono-data text-[12px] text-[#6b665e] truncate">{u.phone}</div>
+                      <div className="font-mono-data text-[11px] text-[#6b665e]">
+                        {new Date(u.createdAt).toISOString().slice(0, 10)}
+                      </div>
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => { setEditUser(u); setEditName(u.name); setEditPhone(u.phone); }}
+                          className="px-2.5 py-1 hairline text-[10px] font-mono-data uppercase tracking-wider text-[#6b665e] hover:bg-[#f4f1ea] cursor-pointer">edit</button>
+                        <button onClick={() => deleteUser(u.phone)}
+                          className="px-2.5 py-1 hairline text-[10px] font-mono-data uppercase tracking-wider text-[#9e4444] hover:bg-[#9e4444]/5 cursor-pointer" style={{ borderColor: "#9e4444", opacity: 0.6 }}>del</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
             {/* Groups table */}
             <div className="rounded-2xl bg-white border border-stone-200 overflow-hidden">
