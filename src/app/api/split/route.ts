@@ -6,10 +6,12 @@ const CATEGORIES_EMOJI: Record<string, string> = {
   shopping: "🛍", spa: "🧖", other: "💰",
 };
 
-/** Env-aware prefix. Test and prod are fully isolated. */
-function prefix(env: string | null, type: "expenses" | "settlements"): string {
+/** Env-aware, group-scoped prefix. Test and prod are fully isolated.
+    group defaults to "walliprag" for backward compat. */
+function prefix(env: string | null, group: string | null, type: "expenses" | "settlements"): string {
   const suffix = env === "test" ? "-test" : "";
-  return `split${suffix}/walliprag/${type}/`;
+  const g = group || "walliprag";
+  return `split${suffix}/${g}/${type}/`;
 }
 
 export interface Expense {
@@ -40,7 +42,9 @@ export interface Settlement {
 
 // POST = create expense
 export async function POST(request: NextRequest) {
-  const env = new URL(request.url).searchParams.get("env");
+  const url = new URL(request.url);
+  const env = url.searchParams.get("env");
+  const group = url.searchParams.get("group");
   const body = (await request.json()) as Partial<Expense>;
 
   if (!body.description || !body.amount || !body.paidBy || !body.splits?.length) {
@@ -63,7 +67,7 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    await put(`${prefix(env, "expenses")}${expense.id}.json`, JSON.stringify(expense), {
+    await put(`${prefix(env, group, "expenses")}${expense.id}.json`, JSON.stringify(expense), {
       access: "public",
       addRandomSuffix: false,
       contentType: "application/json",
@@ -76,9 +80,11 @@ export async function POST(request: NextRequest) {
 
 // GET = list all expenses + calculate balances
 export async function GET(request: NextRequest) {
-  const env = new URL(request.url).searchParams.get("env");
+  const url = new URL(request.url);
+  const env = url.searchParams.get("env");
+  const group = url.searchParams.get("group");
   // Fetch expenses
-  const { blobs: expBlobs } = await list({ prefix: prefix(env, "expenses") });
+  const { blobs: expBlobs } = await list({ prefix: prefix(env, group, "expenses") });
   const expenses: Expense[] = [];
   for (const b of expBlobs) {
     try {
@@ -89,7 +95,7 @@ export async function GET(request: NextRequest) {
   expenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Fetch settlements
-  const { blobs: setBlobs } = await list({ prefix: prefix(env, "settlements") });
+  const { blobs: setBlobs } = await list({ prefix: prefix(env, group, "settlements") });
   const settlements: Settlement[] = [];
   for (const b of setBlobs) {
     try {

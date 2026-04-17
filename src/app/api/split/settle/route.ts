@@ -1,13 +1,16 @@
 import { put } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 
-function prefix(env: string | null): string {
+function prefix(env: string | null, group: string | null): string {
   const suffix = env === "test" ? "-test" : "";
-  return `split${suffix}/walliprag/settlements/`;
+  const g = group || "walliprag";
+  return `split${suffix}/${g}/settlements/`;
 }
 
 export async function POST(request: NextRequest) {
-  const env = new URL(request.url).searchParams.get("env");
+  const url = new URL(request.url);
+  const env = url.searchParams.get("env");
+  const group = url.searchParams.get("group");
   const body = await request.json();
   const { from, to, amount, currency, method, date } = body as {
     from?: string; to?: string; amount?: number;
@@ -30,7 +33,7 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    await put(`${prefix(env)}${settlement.id}.json`, JSON.stringify(settlement), {
+    await put(`${prefix(env, group)}${settlement.id}.json`, JSON.stringify(settlement), {
       access: "public",
       addRandomSuffix: false,
       contentType: "application/json",

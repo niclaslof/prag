@@ -12,6 +12,7 @@ interface Balance { from: string; to: string; amount: number }
 interface Stats { totalCZK: number; totalSEK: number; expenseCount: number; people: string[]; byCategory: Record<string, number> }
 interface Activity { type: string; text: string; time: string; emoji: string }
 interface User { phone: string; name: string; color: string; avatar: string; createdAt: string; deleted?: boolean }
+interface Group { id: string; name: string; emoji: string; createdBy: string; createdAt: string; memberPhones: string[] }
 
 type Env = "prod" | "test";
 
@@ -62,6 +63,14 @@ function SetupScreen({ env, onDone }: { env: Env; onDone: (name: string, phone: 
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [existingUsers, setExistingUsers] = useState<{ name: string; color: string }[]>([]);
+
+  // Fetch existing users to show "Join X and 3 others" welcome
+  useEffect(() => {
+    fetch(apiUrl("/api/users", env)).then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.users?.length) setExistingUsers(d.users);
+    }).catch(() => {});
+  }, [env]);
 
   const canSubmit = name.trim().length >= 2 && phone.replace(/[^\d+]/g, "").length >= 6;
 
@@ -178,6 +187,7 @@ export default function SplitPage() {
       myPhone={myPhone}
       onLogout={handleLogout}
       onSwitchEnv={switchEnv}
+      key={env + myPhone}
     />
   );
 }
@@ -197,9 +207,41 @@ function SplitApp({
   const [stats, setStats] = useState<Stats | null>(null);
   const [activity, setActivity] = useState<Activity[]>([]);
   const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [currentGroupId, setCurrentGroupId] = useState<string>(() => {
+    if (typeof window === "undefined") return "walliprag";
+    return localStorage.getItem(storageKey(env, "groupId")) || "walliprag";
+  });
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showGroupSwitcher, setShowGroupSwitcher] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
   const [resetting, setResetting] = useState(false);
+
+  const currentGroup = groups.find(g => g.id === currentGroupId);
+  const selectGroup = (id: string) => {
+    setCurrentGroupId(id);
+    localStorage.setItem(storageKey(env, "groupId"), id);
+    setShowGroupSwitcher(false);
+    setExpenses([]); setBalances([]); setStats(null); setActivity([]);
+  };
+
+  const createGroup = async () => {
+    if (!newGroupName.trim()) return;
+    try {
+      const res = await fetch(apiUrl("/api/groups", env), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newGroupName.trim(), createdBy: myName, creatorPhone: myPhone }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setGroups(prev => [d.group, ...prev]);
+        selectGroup(d.group.id);
+        setNewGroupName("");
+      }
+    } catch { /* ok */ }
+  };
 
   // Group members (merged from registered users + local additions)
   const [localMembers, setLocalMembers] = useState<string[]>(() => {
@@ -245,10 +287,11 @@ function SplitApp({
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Parallel fetch: split data + registered users
-      const [splitRes, usersRes] = await Promise.all([
-        fetch(apiUrl("/api/split", env), { cache: "no-store" }),
+      // Parallel fetch
+      const [splitRes, usersRes, groupsRes] = await Promise.all([
+        fetch(apiUrl(`/api/split?group=${encodeURIComponent(currentGroupId)}`, env), { cache: "no-store" }),
         fetch(apiUrl("/api/users", env), { cache: "no-store" }),
+        fetch(apiUrl("/api/groups", env), { cache: "no-store" }),
       ]);
       if (splitRes.ok) {
         const d = await splitRes.json();
@@ -256,22 +299,23 @@ function SplitApp({
         setBalances(d.balances || []);
         setStats(d.stats || null);
         setActivity(d.activity || []);
-        // Auto-add people from history to local members
         const known = new Set(localMembers);
         known.add(myName);
         (d.stats?.people || []).forEach((p: string) => known.add(p));
-        if (known.size > localMembers.length) {
-          saveLocalMembers(Array.from(known));
-        }
+        if (known.size > localMembers.length) saveLocalMembers(Array.from(known));
       }
       if (usersRes.ok) {
         const u = await usersRes.json();
         setRegisteredUsers(u.users || []);
       }
+      if (groupsRes.ok) {
+        const g = await groupsRes.json();
+        setGroups(g.groups || []);
+      }
     } catch { /* ok */ }
     setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [env, myName]);
+  }, [env, myName, currentGroupId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -297,7 +341,7 @@ function SplitApp({
     const amt = parseFloat(amount);
     const splits = splitWith.map(name => ({ name, share: Math.round(amt / splitWith.length * 100) / 100 }));
     try {
-      await fetch(apiUrl("/api/split", env), {
+      await fetch(apiUrl(`/api/split?group=${encodeURIComponent(currentGroupId)}`, env), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: desc, amount: amt, currency, paidBy, splits, category, createdBy: myName }),
@@ -311,7 +355,7 @@ function SplitApp({
 
   const handleSettle = async (b: Balance) => {
     try {
-      await fetch(apiUrl("/api/split/settle", env), {
+      await fetch(apiUrl(`/api/split/settle?group=${encodeURIComponent(currentGroupId)}`, env), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ from: b.from, to: b.to, amount: b.amount, currency: "CZK", method: "Swish" }),
@@ -325,16 +369,18 @@ function SplitApp({
 
   const handleReset = async () => {
     if (env !== "test") return;
-    if (!confirm("Reset ALL test data? This deletes all expenses, settlements and users in test mode.")) return;
+    if (!confirm("Reset ALL test data?\n\nThis deletes EVERYTHING in test mode:\n• All expenses and settlements\n• All registered users (including you)\n• All group members\n\nYou will be logged out.")) return;
     setResetting(true);
     try {
       const res = await fetch(apiUrl("/api/split/reset", env), { method: "POST" });
       if (res.ok) {
-        const d = await res.json();
-        setToast(`✅ Test data reset (${d.deleted} items)`);
+        // Clear all test-mode localStorage
         localStorage.removeItem(storageKey(env, "members"));
+        localStorage.removeItem(storageKey(env, "name"));
+        localStorage.removeItem(storageKey(env, "phone"));
         setExpenses([]); setBalances([]); setStats(null); setActivity([]); setRegisteredUsers([]);
-        setTimeout(() => setToast(""), 3000);
+        // Force full logout → back to setup screen
+        onLogout();
       }
     } catch { /* ok */ }
     setResetting(false);
@@ -378,13 +424,23 @@ function SplitApp({
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-100 px-4 py-3">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-bold">Walli Split</h1>
+          <button onClick={() => setShowGroupSwitcher(true)} className="flex-1 min-w-0 text-left cursor-pointer">
+            <h1 className="text-lg font-bold flex items-center gap-1.5 truncate">
+              {currentGroup ? (
+                <>
+                  <span>{currentGroup.emoji}</span>
+                  <span className="truncate">{currentGroup.name}</span>
+                </>
+              ) : (
+                "Walli Split"
+              )}
+              <span className="text-xs text-stone-400 ml-1">▾</span>
+            </h1>
             <p className="text-xs text-stone-400">
               {myName} · {members.length} people
-              {stats && stats.expenseCount > 0 && ` · ${stats.totalCZK.toLocaleString()} CZK total`}
+              {stats && stats.expenseCount > 0 && ` · ${stats.totalCZK.toLocaleString()} CZK`}
             </p>
-          </div>
+          </button>
           <div className="flex items-center gap-2">
             <button onClick={() => setShowMembers(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm cursor-pointer hover:bg-stone-200 transition-colors" title="Group">👥</button>
             <button onClick={() => setShowSettings(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm cursor-pointer hover:bg-stone-200 transition-colors" title="Settings">⚙</button>
@@ -722,6 +778,29 @@ function SplitApp({
               </button>
             )}
 
+            {/* Invite link + QR */}
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Invite others</p>
+              <div className="p-3 rounded-2xl bg-stone-50 flex items-center gap-3">
+                <img
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(typeof window !== "undefined" ? window.location.origin + "/split" : "")}`}
+                  alt="QR code"
+                  className="w-24 h-24 rounded-xl bg-white"
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-[0.72rem] text-stone-600 mb-2 leading-snug">Share this QR or link. Anyone who opens it joins the group.</p>
+                  <button
+                    onClick={() => {
+                      const url = window.location.origin + "/split";
+                      if (navigator.share) navigator.share({ title: "Walli Split", url });
+                      else { navigator.clipboard.writeText(url); setToast("✅ Link copied"); setTimeout(() => setToast(""), 2000); }
+                    }}
+                    className="w-full py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold cursor-pointer hover:bg-stone-800 transition-colors"
+                  >📤 Share link</button>
+                </div>
+              </div>
+            </div>
+
             {/* Logout */}
             <button onClick={onLogout}
               className="w-full py-2.5 rounded-2xl bg-stone-100 text-stone-700 text-sm font-medium cursor-pointer hover:bg-stone-200 transition-colors mb-2">
@@ -735,6 +814,58 @@ function SplitApp({
             </button>
 
             <button onClick={() => setShowSettings(false)} className="w-full py-2 text-sm text-stone-400 cursor-pointer">Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Group switcher sheet */}
+      {showGroupSwitcher && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setShowGroupSwitcher(false)}>
+          <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-3">Groups</h3>
+            <p className="text-xs text-stone-400 mb-4">Switch between trips or projects. Each group has its own expenses.</p>
+
+            {/* Default group (walliprag — always visible) */}
+            {!groups.some(g => g.id === "walliprag") && (
+              <button onClick={() => selectGroup("walliprag")}
+                className={`w-full flex items-center gap-3 p-3 rounded-2xl mb-2 transition-colors cursor-pointer ${currentGroupId === "walliprag" ? "bg-stone-100 ring-2 ring-stone-900" : "bg-stone-50 hover:bg-stone-100"}`}>
+                <span className="text-2xl">🧳</span>
+                <div className="flex-1 text-left">
+                  <div className="text-sm font-semibold">Walli Prag (default)</div>
+                  <div className="text-[0.65rem] text-stone-400">Main trip group</div>
+                </div>
+                {currentGroupId === "walliprag" && <span className="text-stone-900">✓</span>}
+              </button>
+            )}
+
+            {groups.map(g => (
+              <button key={g.id} onClick={() => selectGroup(g.id)}
+                className={`w-full flex items-center gap-3 p-3 rounded-2xl mb-2 transition-colors cursor-pointer ${currentGroupId === g.id ? "bg-stone-100 ring-2 ring-stone-900" : "bg-stone-50 hover:bg-stone-100"}`}>
+                <span className="text-2xl">{g.emoji}</span>
+                <div className="flex-1 text-left">
+                  <div className="text-sm font-semibold">{g.name}</div>
+                  <div className="text-[0.65rem] text-stone-400">{g.memberPhones.length} member{g.memberPhones.length === 1 ? "" : "s"}</div>
+                </div>
+                {currentGroupId === g.id && <span className="text-stone-900">✓</span>}
+              </button>
+            ))}
+
+            {/* Create new group */}
+            <div className="mt-4 pt-4 border-t border-stone-100">
+              <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Create new group</p>
+              <div className="flex gap-2">
+                <input type="text" value={newGroupName} onChange={e => setNewGroupName(e.target.value)}
+                  placeholder="e.g. Rome 2026"
+                  onKeyDown={e => e.key === "Enter" && createGroup()}
+                  className="flex-1 px-4 py-2.5 rounded-2xl bg-stone-50 text-sm outline-none border-2 border-transparent focus:border-stone-900" />
+                <button onClick={createGroup} disabled={!newGroupName.trim()}
+                  className="px-4 py-2.5 rounded-2xl bg-stone-900 text-white text-sm font-semibold cursor-pointer disabled:opacity-30">
+                  Create
+                </button>
+              </div>
+            </div>
+
+            <button onClick={() => setShowGroupSwitcher(false)} className="w-full py-2 mt-4 text-sm text-stone-400 cursor-pointer">Close</button>
           </div>
         </div>
       )}
