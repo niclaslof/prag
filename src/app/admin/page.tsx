@@ -219,46 +219,80 @@ export default function AdminPage() {
             </section>
 
             {/* Groups table */}
-            <div className="rounded-2xl bg-white border border-stone-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-stone-100">
-                <h2 className="text-sm font-bold">Groups ({groups.length})</h2>
+            <section>
+              <div className="flex items-end justify-between mb-4">
+                <div>
+                  <p className="text-caption mb-1">Groups</p>
+                  <h2 className="font-display text-2xl font-semibold">Expense groups</h2>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] font-mono-data text-[#6b665e]">
+                  <span>GET /api/groups?env={env}</span>
+                  <span>· {groups.length} rows</span>
+                </div>
               </div>
-              {groups.length === 0 && <p className="p-5 text-sm text-stone-400">No groups created</p>}
-              <div className="divide-y divide-stone-100">
-                {groups.map(g => (
-                  <div key={g.id} className="px-5 py-3 flex items-center gap-3 hover:bg-stone-50">
-                    <span className="text-xl">{g.emoji}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">{g.name}</p>
-                      <p className="text-xs text-stone-400">ID: {g.id} · {g.memberPhones.length} members · by {g.createdBy}</p>
-                    </div>
-                    <p className="text-[0.6rem] text-stone-400 shrink-0">
-                      {new Date(g.createdAt).toLocaleDateString("sv-SE")}
-                    </p>
-                    <button onClick={() => {
-                      const url = `${window.location.origin}/split?join=${g.id}${env === "test" ? "&env=test" : ""}`;
-                      navigator.clipboard.writeText(url);
-                      notify("✅ Invite link copied");
-                    }} className="px-2.5 py-1 rounded-lg bg-stone-100 text-xs font-medium text-stone-600 cursor-pointer hover:bg-stone-200">
-                      📤 Link
-                    </button>
-                    <button onClick={() => deleteGroup(g.id)}
-                      className="px-2.5 py-1 rounded-lg bg-red-50 text-xs font-medium text-red-600 cursor-pointer hover:bg-red-100">Delete</button>
+
+              {groups.length === 0 ? (
+                <div className="hairline p-12 text-center">
+                  <p className="text-caption text-[#6b665e]">No records</p>
+                  <p className="text-[11px] font-mono-data text-[#6b665e]/70 mt-2">POST /api/groups to create</p>
+                </div>
+              ) : (
+                <div className="hairline overflow-hidden">
+                  <div className="grid grid-cols-[minmax(0,2fr)_2fr_auto_1fr_auto] gap-4 px-5 py-2.5 hairline-b" style={{ backgroundColor: "#f4f1ea" }}>
+                    <div className="text-caption">Name</div>
+                    <div className="text-caption">ID</div>
+                    <div className="text-caption">Members</div>
+                    <div className="text-caption">Created</div>
+                    <div className="text-caption text-right">Actions</div>
                   </div>
-                ))}
-              </div>
-            </div>
+                  {groups.map((g, idx) => (
+                    <div key={g.id}
+                      className={`grid grid-cols-[minmax(0,2fr)_2fr_auto_1fr_auto] gap-4 px-5 py-3 items-center hover:bg-[#f4f1ea]/50 transition-colors ${idx !== groups.length - 1 ? "hairline-b" : ""}`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-base">{g.emoji}</span>
+                        <span className="text-[13px] font-medium truncate">{g.name}</span>
+                      </div>
+                      <div className="font-mono-data text-[11px] text-[#6b665e] truncate">{g.id}</div>
+                      <div className="font-mono-data text-[12px] tabular-nums">{g.memberPhones.length}</div>
+                      <div className="font-mono-data text-[11px] text-[#6b665e]">
+                        {new Date(g.createdAt).toISOString().slice(0, 10)}
+                      </div>
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => {
+                          const url = `${window.location.origin}/split?join=${g.id}${env === "test" ? "&env=test" : ""}`;
+                          navigator.clipboard.writeText(url);
+                          notify("link copied to clipboard");
+                        }} className="px-2.5 py-1 hairline text-[10px] font-mono-data uppercase tracking-wider text-[#6b665e] hover:bg-[#f4f1ea] cursor-pointer">copy</button>
+                        <button onClick={() => deleteGroup(g.id)}
+                          className="px-2.5 py-1 hairline text-[10px] font-mono-data uppercase tracking-wider text-[#9e4444] hover:bg-[#9e4444]/5 cursor-pointer" style={{ borderColor: "#9e4444", opacity: 0.6 }}>del</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
 
             {/* Danger zone */}
             {env === "test" && (
-              <div className="rounded-2xl border-2 border-red-200 bg-red-50 p-5">
-                <h2 className="text-sm font-bold text-red-800 mb-2">⚠ Danger Zone (Test only)</h2>
-                <p className="text-xs text-red-700 mb-3">This will delete ALL test users, groups, expenses and settlements.</p>
-                <button onClick={resetTestData}
-                  className="px-4 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold cursor-pointer hover:bg-red-700 transition-colors">
-                  🗑 Reset ALL test data
-                </button>
-              </div>
+              <section className="hairline p-6" style={{ borderColor: "#9e4444", backgroundColor: "#9e4444" + "08" }}>
+                <div className="flex items-start gap-4">
+                  <div className="flex-1">
+                    <p className="text-caption mb-1" style={{ color: "#9e4444" }}>Danger Zone</p>
+                    <h2 className="font-display text-lg font-semibold mb-2">Reset test environment</h2>
+                    <p className="text-[12px] text-[#6b665e] max-w-md">
+                      Destroys all test users, groups, expenses and settlements. Production data is untouched. This action cannot be undone.
+                    </p>
+                    <p className="mt-3 text-[10px] font-mono-data text-[#6b665e]">
+                      DELETE split-test/* users-test/* groups-test/*
+                    </p>
+                  </div>
+                  <button onClick={resetTestData}
+                    className="px-4 py-2 font-mono-data text-[11px] uppercase tracking-wider text-white cursor-pointer transition-colors"
+                    style={{ backgroundColor: "#9e4444" }}>
+                    Reset all
+                  </button>
+                </div>
+              </section>
             )}
           </>
         )}
@@ -266,33 +300,53 @@ export default function AdminPage() {
 
       {/* Edit user modal */}
       {editUser && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-center justify-center p-4" onClick={() => setEditUser(null)}>
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold mb-4">Edit user</h3>
-            <div className="space-y-3">
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEditUser(null)}>
+          <div className="hairline w-full max-w-md shadow-2xl" style={{ backgroundColor: "#faf9f5" }} onClick={e => e.stopPropagation()}>
+            <div className="hairline-b px-5 py-3 flex items-center justify-between">
               <div>
-                <label className="text-xs font-semibold text-stone-500 block mb-1">Name</label>
+                <p className="text-caption">Edit · Users</p>
+                <p className="font-mono-data text-[11px] text-[#6b665e] mt-0.5">{editUser.phone}</p>
+              </div>
+              <button onClick={() => setEditUser(null)} className="text-[#6b665e] hover:text-[#1a1715] text-lg cursor-pointer leading-none">×</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="text-caption block mb-1.5">Name</label>
                 <input type="text" value={editName} onChange={e => setEditName(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-stone-50 border-2 border-stone-200 text-sm outline-none focus:border-stone-900" />
+                  className="w-full px-3 py-2 hairline font-mono-data text-[13px] outline-none focus:border-[#c96442] transition-colors"
+                  style={{ backgroundColor: "white" }} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-stone-500 block mb-1">Phone</label>
+                <label className="text-caption block mb-1.5">Phone</label>
                 <input type="tel" value={editPhone} onChange={e => setEditPhone(e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl bg-stone-50 border-2 border-stone-200 text-sm outline-none focus:border-stone-900" />
+                  className="w-full px-3 py-2 hairline font-mono-data text-[13px] outline-none focus:border-[#c96442] transition-colors"
+                  style={{ backgroundColor: "white" }} />
               </div>
               <div>
-                <label className="text-xs font-semibold text-stone-500 block mb-1">Created</label>
-                <p className="text-sm text-stone-600">{new Date(editUser.createdAt).toLocaleString("sv-SE")}</p>
+                <label className="text-caption block mb-1.5">Created</label>
+                <p className="font-mono-data text-[12px] text-[#6b665e]">{new Date(editUser.createdAt).toISOString()}</p>
               </div>
             </div>
-            <div className="flex gap-2 mt-5">
-              <button onClick={() => setEditUser(null)} className="flex-1 py-2.5 rounded-xl bg-stone-100 text-sm font-medium text-stone-600 cursor-pointer">Cancel</button>
+            <div className="hairline-t px-5 py-3 flex gap-2 justify-end">
+              <button onClick={() => setEditUser(null)} className="px-3 py-1.5 hairline text-[10px] font-mono-data uppercase tracking-wider text-[#6b665e] hover:bg-[#f4f1ea] cursor-pointer">cancel <kbd className="kbd ml-1">esc</kbd></button>
               <button onClick={saveUser} disabled={!editName.trim() || !editPhone.trim()}
-                className="flex-1 py-2.5 rounded-xl bg-stone-900 text-white text-sm font-semibold cursor-pointer disabled:opacity-30">Save</button>
+                className="px-3 py-1.5 text-[10px] font-mono-data uppercase tracking-wider text-white cursor-pointer disabled:opacity-30"
+                style={{ backgroundColor: "#c96442" }}>save <kbd className="kbd ml-1" style={{ backgroundColor: "rgba(255,255,255,0.15)", borderColor: "rgba(255,255,255,0.2)", color: "white" }}>↵</kbd></button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Footer */}
+      <footer className="hairline-t mt-16">
+        <div className="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between text-[10px] font-mono-data text-[#6b665e]">
+          <span>walli-split · v2.1.0 · build {typeof window !== "undefined" ? "a4b9c8" : "—"}</span>
+          <span className="flex items-center gap-2">
+            <span className="status-dot status-active" />
+            <span>api operational</span>
+          </span>
+        </div>
+      </footer>
     </div>
   );
 }
