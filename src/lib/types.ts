@@ -34,6 +34,34 @@ export interface PlaceReview {
   relativeTime: string;
 }
 
+// ── Editorial enrichment types ──
+
+export type BestFor =
+  | "solo"
+  | "couple"
+  | "groups"
+  | "families"
+  | "business"
+  | "first-time"
+  | "locals"
+  | "budget"
+  | "splurge";
+
+export type Vibe =
+  | "romantic"
+  | "lively"
+  | "cozy"
+  | "quiet"
+  | "touristy"
+  | "local"
+  | "instagram"
+  | "historic"
+  | "modern"
+  | "underground"
+  | "elegant"
+  | "gritty"
+  | "authentic";
+
 export interface Place {
   id: number;
   /** Google Place ID (if sourced via Places API) */
@@ -69,6 +97,38 @@ export interface Place {
   isKidFriendly?: boolean;
   /** Google reviews (up to 5). */
   reviews?: PlaceReview[];
+
+  // ── Rich editorial fields (populated by enrichment.ts) ──
+  /** 1-3 specific items to order: dishes, drinks, exhibits */
+  signatureDishes?: string[];
+  /** Who is this place best for? */
+  bestFor?: BestFor[];
+  /** Atmosphere / mood */
+  vibe?: Vibe[];
+  /** One-sentence insider advice */
+  insiderTip?: string;
+  /** For fine dining / classy bars */
+  dressCode?: "casual" | "smart casual" | "smart";
+  /** Direct reservation/booking URL */
+  reservationUrl?: string;
+  /** How long a visit typically takes ("30 min", "1-2 hours") */
+  visitDuration?: string;
+  /** Year the place opened */
+  openSince?: number;
+  /** Good sunset / golden-hour viewpoint */
+  sunsetSpot?: boolean;
+  /** Has terrace / garden seating */
+  outdoorSeating?: boolean;
+  /** Wheelchair accessible */
+  wheelchairAccessible?: boolean;
+  /** Dogs allowed */
+  dogFriendly?: boolean;
+  /** WiFi for guests */
+  wifiAvailable?: boolean;
+  /** Laptop-friendly (true) or "please don't" (false) */
+  laptopFriendly?: boolean;
+  /** Known tourist trap — shown as warning badge */
+  avoidIfTouristy?: boolean;
 }
 
 export type CategoryFilter = Category | "all";
@@ -167,3 +227,56 @@ export const CATEGORY_FILTERS: Category[] = [
   "club",
   "spa",
 ];
+
+export const BEST_FOR_LABELS: Record<BestFor, string> = {
+  solo: "Solo",
+  couple: "Couples",
+  groups: "Groups",
+  families: "Families",
+  business: "Business",
+  "first-time": "First-timers",
+  locals: "Locals' pick",
+  budget: "Budget",
+  splurge: "Splurge",
+};
+
+export const VIBE_LABELS: Record<Vibe, string> = {
+  romantic: "Romantic",
+  lively: "Lively",
+  cozy: "Cozy",
+  quiet: "Quiet",
+  touristy: "Touristy",
+  local: "Local vibe",
+  instagram: "Instagrammable",
+  historic: "Historic",
+  modern: "Modern",
+  underground: "Underground",
+  elegant: "Elegant",
+  gritty: "Gritty",
+  authentic: "Authentic",
+};
+
+// ── Collections ──
+
+export interface Collection {
+  id: string;
+  name: string;
+  description: string;
+  emoji: string;
+  /** Place IDs in recommended order */
+  placeIds: number[];
+  estimatedDuration?: string;
+  idealFor?: string;
+}
+
+// ── Smart Picks ──
+
+export type TimeOfDay = "morning" | "lunch" | "afternoon" | "dinner" | "night";
+
+export const TIME_CATEGORY_MAP: Record<TimeOfDay, Category[]> = {
+  morning: ["cafe", "sight"],
+  lunch: ["restaurant", "cafe"],
+  afternoon: ["sight", "cafe", "bar"],
+  dinner: ["restaurant", "bar"],
+  night: ["bar", "club"],
+};
