@@ -98,15 +98,15 @@ export default function AdminPage() {
 
       {/* Header */}
       <header className="sticky top-0 z-40 hairline-b" style={{ backgroundColor: "#faf9f5" }}>
-        <div className="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-7 h-7 flex items-center justify-center hairline font-mono-data text-[11px] font-bold">W</div>
-            <div>
-              <h1 className="font-display text-base font-semibold tracking-tight">Walli Split</h1>
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-4 md:py-5 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
+            <div className="w-7 h-7 flex items-center justify-center hairline font-mono-data text-[11px] font-bold shrink-0">W</div>
+            <div className="min-w-0">
+              <h1 className="font-display text-sm md:text-base font-semibold tracking-tight truncate">Walli Split</h1>
               <p className="text-[10px] text-[#6b665e] font-mono-data">admin · {env}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
             <div className="flex hairline overflow-hidden">
               {(["prod", "test"] as Env[]).map(e => (
                 <button key={e} onClick={() => setEnv(e)}
@@ -124,7 +124,7 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto px-8 py-8 space-y-10">
+      <main className="max-w-6xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-8 md:space-y-10">
         {loading && <div className="text-center py-12"><div className="w-6 h-6 border-2 border-stone-300 border-t-stone-600 rounded-full animate-spin mx-auto" /></div>}
 
         {!loading && (
@@ -132,7 +132,7 @@ export default function AdminPage() {
             {/* Overview — typographic stats */}
             <section>
               <p className="text-caption mb-5">Overview</p>
-              <div className="grid grid-cols-4 gap-8">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
                 <div>
                   <p className="font-display text-4xl font-semibold">{users.length}</p>
                   <div className="mt-1 flex items-center gap-1.5 text-[11px] font-mono-data text-[#6b665e]">
@@ -179,7 +179,7 @@ export default function AdminPage() {
                   <p className="text-[11px] font-mono-data text-[#6b665e]/70 mt-2">POST /api/users to register</p>
                 </div>
               ) : (
-                <div className="hairline overflow-hidden">
+                <div className="hairline overflow-x-auto">
                   {/* Table head */}
                   <div className="grid grid-cols-[minmax(0,2fr)_1.5fr_1fr_auto] gap-4 px-5 py-2.5 hairline-b" style={{ backgroundColor: "#f4f1ea" }}>
                     <div className="text-caption">Name</div>
@@ -237,7 +237,7 @@ export default function AdminPage() {
                   <p className="text-[11px] font-mono-data text-[#6b665e]/70 mt-2">POST /api/groups to create</p>
                 </div>
               ) : (
-                <div className="hairline overflow-hidden">
+                <div className="hairline overflow-x-auto">
                   <div className="grid grid-cols-[minmax(0,2fr)_2fr_auto_1fr_auto] gap-4 px-5 py-2.5 hairline-b" style={{ backgroundColor: "#f4f1ea" }}>
                     <div className="text-caption">Name</div>
                     <div className="text-caption">ID</div>
@@ -339,7 +339,7 @@ export default function AdminPage() {
 
       {/* Footer */}
       <footer className="hairline-t mt-16">
-        <div className="max-w-6xl mx-auto px-8 py-5 flex items-center justify-between text-[10px] font-mono-data text-[#6b665e]">
+        <div className="max-w-6xl mx-auto px-4 md:px-8 py-5 flex items-center justify-between text-[10px] font-mono-data text-[#6b665e]">
           <span>walli-split · v2.1.0 · build {typeof window !== "undefined" ? "a4b9c8" : "—"}</span>
           <span className="flex items-center gap-2">
             <span className="status-dot status-active" />
