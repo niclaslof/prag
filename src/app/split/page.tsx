@@ -687,15 +687,24 @@ function SplitApp({
         </div>
       </header>
 
-      {/* Balance card */}
-      <div className="px-4 pt-4">
-        <div className={`rounded-3xl p-5 ${myBalance >= 0 ? "bg-emerald-50" : "bg-red-50"}`}>
-          <p className="text-xs font-medium text-stone-500 mb-1">Your balance</p>
-          <p className={`text-3xl font-bold tabular-nums ${myBalance >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-            {myBalance >= 0 ? "+" : ""}{Math.round(myBalance)} CZK
+      {/* Balance card — typographic, professional */}
+      <div className="px-4 pt-5">
+        <div className="hairline p-5 rounded-2xl bg-[#faf9f5]">
+          <div className="flex items-baseline justify-between mb-2">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#6b665e]">Your balance</span>
+            <span className="flex items-center gap-1.5 text-[10px] font-mono-data text-[#6b665e]">
+              <span className={`status-dot ${myBalance === 0 ? "status-active" : myBalance > 0 ? "status-active" : "status-error"}`} />
+              {myBalance > 0 ? "net positive" : myBalance < 0 ? "net negative" : "settled"}
+            </span>
+          </div>
+          <p className="font-display text-5xl font-semibold tabular-nums leading-none" style={{
+            color: myBalance > 0 ? "#3d7a5c" : myBalance < 0 ? "#9e4444" : "#1a1715"
+          }}>
+            {myBalance >= 0 ? "+" : ""}{Math.round(myBalance).toLocaleString()}
+            <span className="text-2xl font-mono-data font-normal ml-2 text-[#6b665e]">CZK</span>
           </p>
-          <p className="text-xs text-stone-400 mt-1">
-            {myBalance > 0 ? "Others owe you" : myBalance < 0 ? "You owe others" : "All settled! 🎉"}
+          <p className="text-xs text-[#6b665e] mt-3 font-mono-data">
+            {myBalance > 0 ? "Others owe you" : myBalance < 0 ? "You owe others" : "All settled"}
           </p>
         </div>
       </div>
@@ -707,16 +716,21 @@ function SplitApp({
           {/* Debts */}
           {balances.length > 0 && (
             <div>
-              <h2 className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Settle up</h2>
-              <div className="space-y-2">
+              <div className="flex items-end justify-between mb-3">
+                <h2 className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#6b665e]">Settle up</h2>
+                <span className="text-[10px] font-mono-data text-[#6b665e]">{balances.length} pending</span>
+              </div>
+              <div className="hairline rounded-2xl overflow-hidden">
                 {balances.map((b, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-stone-50">
-                    <div className="w-9 h-9 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-sm font-bold">{b.from[0]}</div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{b.from} → {b.to}</p>
+                  <div key={i} className={`flex items-center gap-3 px-4 py-3 hover:bg-stone-50 transition-colors ${i !== balances.length - 1 ? "hairline-b" : ""}`}>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <span className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-mono-data font-semibold text-white" style={{ backgroundColor: "#9e4444", opacity: 0.7 }}>{b.from[0]}</span>
+                      <ArrowRight size={12} strokeWidth={1.5} className="text-[#6b665e]/50" />
+                      <span className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-mono-data font-semibold text-white" style={{ backgroundColor: "#3d7a5c", opacity: 0.7 }}>{b.to[0]}</span>
+                      <p className="text-[13px] ml-1">{b.from} pays {b.to}</p>
                     </div>
-                    <p className="text-sm font-bold tabular-nums">{b.amount} CZK</p>
-                    <button onClick={() => setSettleTarget(b)} className="px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-semibold cursor-pointer hover:bg-emerald-600 transition-colors">Pay</button>
+                    <p className="font-mono-data text-[13px] font-semibold tabular-nums">{b.amount.toLocaleString()} CZK</p>
+                    <button onClick={() => setSettleTarget(b)} className="px-3 py-1.5 text-[10px] font-mono-data uppercase tracking-wider text-white cursor-pointer transition-colors" style={{ backgroundColor: "#c96442" }}>Pay</button>
                   </div>
                 ))}
               </div>
