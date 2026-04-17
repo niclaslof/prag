@@ -799,7 +799,44 @@ function SplitApp({
       {/* ADD VIEW */}
       {view === "add" && (
         <div className="px-4 pt-4 space-y-4">
-          <button onClick={() => setView("home")} className="text-sm text-stone-400 cursor-pointer">← Back</button>
+          <div className="flex items-center justify-between">
+            <button onClick={() => setView("home")} className="text-sm text-stone-400 cursor-pointer">← Back</button>
+            <label className="px-3 py-1.5 hairline text-[11px] font-mono-data uppercase tracking-wider text-[#6b665e] hover:bg-[#f4f1ea] cursor-pointer flex items-center gap-1.5">
+              <Upload size={12} strokeWidth={1.5} />
+              Scan receipt
+              <input type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  e.target.value = "";
+                  setToast("Scanning receipt…");
+                  const fd = new FormData();
+                  fd.append("image", file);
+                  try {
+                    const res = await fetch("/api/receipt", { method: "POST", body: fd });
+                    const data = await res.json();
+                    if (data.error) { setToast(data.error); setTimeout(() => setToast(""), 4000); return; }
+                    // Auto-fill form from receipt
+                    if (data.items?.length > 0) {
+                      setSplitMode("items");
+                      setItems(data.items.map((i: { description: string; amount: number }) => ({
+                        name: i.description,
+                        price: String(i.amount),
+                        assignedTo: [...members],
+                      })));
+                      if (data.items.length === 1) setDesc(data.items[0].description);
+                      else setDesc("Receipt");
+                      setCurrency(data.currency || "CZK");
+                      setToast(`✓ Found ${data.items.length} items`);
+                    } else {
+                      setToast("No items found — try a clearer photo");
+                    }
+                    setTimeout(() => setToast(""), 3000);
+                  } catch { setToast("Scan failed"); setTimeout(() => setToast(""), 3000); }
+                }}
+              />
+            </label>
+          </div>
 
           {/* Presets */}
           <div>
