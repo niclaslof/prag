@@ -11,8 +11,68 @@
   --color-tag-text: #92400e;
   --color-new-bg: #dcfce7;
   --color-new-text: #166534;
+
+  /* Claude-inspired professional palette (used in /admin, /split) */
+  --color-paper-pro: #faf9f5;
+  --color-paper-pro-2: #f4f1ea;
+  --color-ink-pro: #1a1715;
+  --color-ink-muted: #6b665e;
+  --color-border-pro: #e8e2d6;
+  --color-rust: #c96442;
+  --color-rust-dim: #a84f31;
+  --color-moss: #3d7a5c;
+  --color-honey: #b8863b;
+  --color-terracotta: #9e4444;
+
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Utility classes for the new design system */
+.font-display { font-family: var(--font-serif); letter-spacing: -0.01em; }
+.font-mono-data { font-family: var(--font-mono); font-feature-settings: "tnum" 1, "zero" 1; }
+.text-caption {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  color: var(--color-ink-muted);
+}
+.text-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+.hairline { border: 1px solid var(--color-border-pro); }
+.hairline-t { border-top: 1px solid var(--color-border-pro); }
+.hairline-b { border-bottom: 1px solid var(--color-border-pro); }
+.hairline-r { border-right: 1px solid var(--color-border-pro); }
+
+/* Professional status dots for h4x-data-nerd vibe */
+.status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.status-active { background: var(--color-moss); }
+.status-pending { background: var(--color-honey); }
+.status-inactive { background: var(--color-ink-muted); opacity: 0.4; }
+.status-error { background: var(--color-terracotta); }
+
+/* Kbd shortcut styling */
+kbd, .kbd {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 1px 5px;
+  background: var(--color-paper-pro-2);
+  border: 1px solid var(--color-border-pro);
+  border-radius: 4px;
+  color: var(--color-ink-muted);
 }
 
 html {
