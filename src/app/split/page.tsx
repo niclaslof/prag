@@ -11,6 +11,27 @@ interface Expense {
 interface Balance { from: string; to: string; amount: number }
 interface Stats { totalCZK: number; totalSEK: number; expenseCount: number; people: string[]; byCategory: Record<string, number> }
 interface Activity { type: string; text: string; time: string; emoji: string }
+interface User { phone: string; name: string; color: string; avatar: string; createdAt: string; deleted?: boolean }
+
+type Env = "prod" | "test";
+
+// --- Env handling ---
+function getEnv(): Env {
+  if (typeof window === "undefined") return "prod";
+  const url = new URL(window.location.href);
+  const q = url.searchParams.get("env");
+  if (q === "test" || q === "prod") return q;
+  return (localStorage.getItem("split-env") as Env) || "prod";
+}
+
+function apiUrl(path: string, env: Env): string {
+  const sep = path.includes("?") ? "&" : "?";
+  return `${path}${sep}env=${env}`;
+}
+
+function storageKey(env: Env, key: string): string {
+  return env === "test" ? `split-test-${key}` : `split-${key}`;
+}
 
 const CATS = [
   { id: "food", emoji: "🍽", label: "Food" },
@@ -35,27 +56,73 @@ const PRESETS = [
 
 function catEmoji(id: string) { return CATS.find(c => c.id === id)?.emoji || "💰"; }
 
-// --- Setup screen (enter name, shown once) ---
-function SetupScreen({ onDone }: { onDone: (name: string) => void }) {
+// --- Setup screen (enter name + phone, shown once) ---
+function SetupScreen({ env, onDone }: { env: Env; onDone: (name: string, phone: string) => void }) {
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const canSubmit = name.trim().length >= 2 && phone.replace(/[^\d+]/g, "").length >= 6;
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    setSubmitting(true); setError("");
+    const cleanPhone = phone.trim();
+    const cleanName = name.trim();
+    try {
+      const res = await fetch(apiUrl("/api/users", env), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: cleanName, phone: cleanPhone }),
+      });
+      if (res.ok) {
+        onDone(cleanName, cleanPhone);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || "Failed to register");
+      }
+    } catch { setError("Network error"); }
+    setSubmitting(false);
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-sm text-center">
-        <div className="text-6xl mb-6">💸</div>
-        <h1 className="text-2xl font-bold mb-2">Walli Split</h1>
-        <p className="text-stone-500 text-sm mb-8">Split expenses with your travel group</p>
-        <input
-          type="text" value={name} onChange={e => setName(e.target.value)}
-          placeholder="Your name"
-          autoFocus
-          onKeyDown={e => e.key === "Enter" && name.trim() && onDone(name.trim())}
-          className="w-full px-4 py-3 rounded-2xl bg-stone-50 border-2 border-stone-200 text-center text-lg font-medium outline-none focus:border-stone-900 transition-colors"
-        />
-        <button
-          onClick={() => name.trim() && onDone(name.trim())}
-          disabled={!name.trim()}
-          className="w-full mt-4 py-3 rounded-2xl bg-stone-900 text-white text-sm font-semibold disabled:opacity-30 cursor-pointer hover:bg-stone-800 transition-colors"
-        >Continue</button>
+      <div className="w-full max-w-sm">
+        <div className="text-center">
+          <div className="text-6xl mb-6">💸</div>
+          <h1 className="text-2xl font-bold mb-2">Walli Split</h1>
+          <p className="text-stone-500 text-sm mb-8">Split expenses with your travel group</p>
+        </div>
+        {env === "test" && (
+          <div className="mb-4 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-center">
+            <p className="text-[0.65rem] font-bold text-amber-800 uppercase tracking-wider">🧪 Test mode</p>
+            <p className="text-[0.65rem] text-amber-700 mt-0.5">Data can be reset anytime</p>
+          </div>
+        )}
+        <div className="space-y-3">
+          <input
+            type="text" value={name} onChange={e => setName(e.target.value)}
+            placeholder="Your name"
+            autoFocus
+            className="w-full px-4 py-3 rounded-2xl bg-stone-50 border-2 border-stone-200 text-lg font-medium outline-none focus:border-stone-900 transition-colors"
+          />
+          <input
+            type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+            placeholder="Your phone (e.g. +46701234567)"
+            onKeyDown={e => e.key === "Enter" && canSubmit && submit()}
+            className="w-full px-4 py-3 rounded-2xl bg-stone-50 border-2 border-stone-200 text-lg font-medium outline-none focus:border-stone-900 transition-colors"
+          />
+          <p className="text-xs text-stone-400 leading-relaxed">
+            Phone is used for Swish payments. Stays saved so you don&apos;t have to type it again.
+          </p>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <button
+            onClick={submit}
+            disabled={!canSubmit || submitting}
+            className="w-full py-3 rounded-2xl bg-stone-900 text-white text-sm font-semibold disabled:opacity-30 cursor-pointer hover:bg-stone-800 transition-colors"
+          >{submitting ? "Registering…" : "Continue"}</button>
+        </div>
       </div>
     </div>
   );
@@ -65,49 +132,101 @@ function SetupScreen({ onDone }: { onDone: (name: string) => void }) {
 type View = "home" | "add" | "balances" | "activity";
 
 export default function SplitPage() {
+  const [env, setEnv] = useState<Env>("prod");
   const [myName, setMyName] = useState<string | null>(null);
+  const [myPhone, setMyPhone] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const saved = localStorage.getItem("split-name");
-    if (saved) setMyName(saved);
+    const e = getEnv();
+    setEnv(e);
+    localStorage.setItem("split-env", e);
+    const savedName = localStorage.getItem(storageKey(e, "name"));
+    const savedPhone = localStorage.getItem(storageKey(e, "phone"));
+    if (savedName) setMyName(savedName);
+    if (savedPhone) setMyPhone(savedPhone);
     setLoaded(true);
   }, []);
 
-  const handleSetup = (name: string) => {
-    localStorage.setItem("split-name", name);
+  const handleSetup = (name: string, phone: string) => {
+    localStorage.setItem(storageKey(env, "name"), name);
+    localStorage.setItem(storageKey(env, "phone"), phone);
     setMyName(name);
+    setMyPhone(phone);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem(storageKey(env, "name"));
+    localStorage.removeItem(storageKey(env, "phone"));
+    setMyName(null);
+    setMyPhone(null);
+  };
+
+  const switchEnv = (newEnv: Env) => {
+    localStorage.setItem("split-env", newEnv);
+    const url = new URL(window.location.href);
+    url.searchParams.set("env", newEnv);
+    window.location.href = url.toString();
   };
 
   if (!loaded) return null;
-  if (!myName) return <SetupScreen onDone={handleSetup} />;
-  return <SplitApp myName={myName} onChangeName={() => { localStorage.removeItem("split-name"); setMyName(null); }} />;
+  if (!myName || !myPhone) return <SetupScreen env={env} onDone={handleSetup} />;
+  return (
+    <SplitApp
+      env={env}
+      myName={myName}
+      myPhone={myPhone}
+      onLogout={handleLogout}
+      onSwitchEnv={switchEnv}
+    />
+  );
 }
 
-function SplitApp({ myName, onChangeName }: { myName: string; onChangeName: () => void }) {
+function SplitApp({
+  env, myName, myPhone, onLogout, onSwitchEnv,
+}: {
+  env: Env;
+  myName: string;
+  myPhone: string;
+  onLogout: () => void;
+  onSwitchEnv: (e: Env) => void;
+}) {
   const [view, setView] = useState<View>("home");
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [balances, setBalances] = useState<Balance[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [activity, setActivity] = useState<Activity[]>([]);
+  const [registeredUsers, setRegisteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
-  // Group members (persisted in localStorage)
-  const [members, setMembers] = useState<string[]>(() => {
+  // Group members (merged from registered users + local additions)
+  const [localMembers, setLocalMembers] = useState<string[]>(() => {
     if (typeof window === "undefined") return [myName];
-    const saved = localStorage.getItem("split-members");
+    const saved = localStorage.getItem(storageKey(env, "members"));
     return saved ? JSON.parse(saved) : [myName];
   });
   const [newMember, setNewMember] = useState("");
   const [showMembers, setShowMembers] = useState(false);
 
-  const saveMembers = (m: string[]) => {
-    setMembers(m);
-    localStorage.setItem("split-members", JSON.stringify(m));
+  // Computed members list: merge registered users + local additions + me
+  const members = Array.from(new Set([
+    myName,
+    ...registeredUsers.map(u => u.name),
+    ...localMembers,
+  ]));
+
+  const saveLocalMembers = (m: string[]) => {
+    setLocalMembers(m);
+    localStorage.setItem(storageKey(env, "members"), JSON.stringify(m));
   };
   const addMember = () => {
     const n = newMember.trim();
-    if (n && !members.includes(n)) { saveMembers([...members, n]); setNewMember(""); }
+    if (n && !members.includes(n)) { saveLocalMembers([...localMembers, n]); setNewMember(""); }
+  };
+  const removeLocalMember = (name: string) => {
+    saveLocalMembers(localMembers.filter(m => m !== name));
   };
 
   // Add expense form
@@ -126,26 +245,47 @@ function SplitApp({ myName, onChangeName }: { myName: string; onChangeName: () =
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/split");
-      if (res.ok) {
-        const d = await res.json();
+      // Parallel fetch: split data + registered users
+      const [splitRes, usersRes] = await Promise.all([
+        fetch(apiUrl("/api/split", env), { cache: "no-store" }),
+        fetch(apiUrl("/api/users", env), { cache: "no-store" }),
+      ]);
+      if (splitRes.ok) {
+        const d = await splitRes.json();
         setExpenses(d.expenses || []);
         setBalances(d.balances || []);
         setStats(d.stats || null);
         setActivity(d.activity || []);
-        // Auto-add people from history
-        const known = new Set(members);
-        (d.stats?.people || []).forEach((p: string) => { if (!known.has(p)) known.add(p); });
-        if (known.size > members.length) saveMembers(Array.from(known));
+        // Auto-add people from history to local members
+        const known = new Set(localMembers);
+        known.add(myName);
+        (d.stats?.people || []).forEach((p: string) => known.add(p));
+        if (known.size > localMembers.length) {
+          saveLocalMembers(Array.from(known));
+        }
+      }
+      if (usersRes.ok) {
+        const u = await usersRes.json();
+        setRegisteredUsers(u.users || []);
       }
     } catch { /* ok */ }
     setLoading(false);
-  }, [members]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [env, myName]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Keep splitWith in sync with members
-  useEffect(() => { setSplitWith(members); }, [members]);
+  // Keep splitWith in sync with members (but only on initial or when members change dramatically)
+  useEffect(() => {
+    setSplitWith(prev => {
+      const prevSet = new Set(prev);
+      return members.filter(m => prevSet.has(m) || prev.length === 0);
+    });
+    if (paidBy === "" || !members.includes(paidBy)) {
+      setPaidBy(myName);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [members.join(",")]);
 
   const toggleSplit = (name: string) => {
     setSplitWith(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
@@ -157,7 +297,7 @@ function SplitApp({ myName, onChangeName }: { myName: string; onChangeName: () =
     const amt = parseFloat(amount);
     const splits = splitWith.map(name => ({ name, share: Math.round(amt / splitWith.length * 100) / 100 }));
     try {
-      await fetch("/api/split", {
+      await fetch(apiUrl("/api/split", env), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ description: desc, amount: amt, currency, paidBy, splits, category, createdBy: myName }),
@@ -171,7 +311,7 @@ function SplitApp({ myName, onChangeName }: { myName: string; onChangeName: () =
 
   const handleSettle = async (b: Balance) => {
     try {
-      await fetch("/api/split/settle", {
+      await fetch(apiUrl("/api/split/settle", env), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ from: b.from, to: b.to, amount: b.amount, currency: "CZK", method: "Swish" }),
@@ -183,6 +323,36 @@ function SplitApp({ myName, onChangeName }: { myName: string; onChangeName: () =
     } catch { /* ok */ }
   };
 
+  const handleReset = async () => {
+    if (env !== "test") return;
+    if (!confirm("Reset ALL test data? This deletes all expenses, settlements and users in test mode.")) return;
+    setResetting(true);
+    try {
+      const res = await fetch(apiUrl("/api/split/reset", env), { method: "POST" });
+      if (res.ok) {
+        const d = await res.json();
+        setToast(`✅ Test data reset (${d.deleted} items)`);
+        localStorage.removeItem(storageKey(env, "members"));
+        setExpenses([]); setBalances([]); setStats(null); setActivity([]); setRegisteredUsers([]);
+        setTimeout(() => setToast(""), 3000);
+      }
+    } catch { /* ok */ }
+    setResetting(false);
+    setShowSettings(false);
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm(`Delete your account (${myName})? You'll be removed from the group.`)) return;
+    try {
+      await fetch(apiUrl("/api/users", env), {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: myPhone }),
+      });
+      onLogout();
+    } catch { /* ok */ }
+  };
+
   const myBalance = balances.reduce((sum, b) => {
     if (b.from === myName) return sum - b.amount;
     if (b.to === myName) return sum + b.amount;
@@ -191,6 +361,13 @@ function SplitApp({ myName, onChangeName }: { myName: string; onChangeName: () =
 
   return (
     <div className="max-w-lg mx-auto pb-24 relative">
+      {/* Test mode banner */}
+      {env === "test" && (
+        <div className="sticky top-0 z-50 bg-amber-100 border-b-2 border-amber-300 px-4 py-1.5 flex items-center justify-between">
+          <span className="text-[0.65rem] font-bold text-amber-900 uppercase tracking-wider">🧪 Test mode</span>
+          <button onClick={() => onSwitchEnv("prod")} className="text-[0.65rem] font-semibold text-amber-900 underline cursor-pointer">Switch to PROD</button>
+        </div>
+      )}
       {/* Toast */}
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-2xl bg-stone-900 text-white text-sm font-medium shadow-xl animate-bounce">
@@ -210,6 +387,7 @@ function SplitApp({ myName, onChangeName }: { myName: string; onChangeName: () =
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => setShowMembers(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm cursor-pointer hover:bg-stone-200 transition-colors" title="Group">👥</button>
+            <button onClick={() => setShowSettings(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm cursor-pointer hover:bg-stone-200 transition-colors" title="Settings">⚙</button>
             <a href="/" className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-xs cursor-pointer hover:bg-stone-200 transition-colors" title="Back to map">🗺</a>
           </div>
         </div>
@@ -471,14 +649,92 @@ function SplitApp({ myName, onChangeName }: { myName: string; onChangeName: () =
       )}
 
       {/* Settle confirm */}
-      {settleTarget && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setSettleTarget(null)}>
+      {settleTarget && (() => {
+        const recipient = registeredUsers.find(u => u.name === settleTarget.to);
+        const amountSEK = Math.round(settleTarget.amount / 2.35);
+        const swishUrl = recipient?.phone
+          ? `https://app.swish.nu/1/p/sw/?sw=${recipient.phone.replace(/\D/g, "")}&amt=${amountSEK}&msg=${encodeURIComponent(`Walli Split`)}&src=qr`
+          : null;
+        return (
+          <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setSettleTarget(null)}>
+            <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-bold mb-1">Settle up</h3>
+              <p className="text-sm text-stone-500 mb-4">{settleTarget.from} pays {settleTarget.to}</p>
+              <div className="text-center py-4">
+                <div className="text-3xl font-bold tabular-nums">{settleTarget.amount} CZK</div>
+                <div className="text-xs text-stone-400">~{amountSEK} SEK</div>
+              </div>
+              {swishUrl && (
+                <a href={swishUrl} target="_blank" rel="noopener noreferrer"
+                  className="block w-full py-3.5 mb-2 rounded-2xl bg-purple-600 text-white text-sm font-semibold cursor-pointer hover:bg-purple-700 transition-colors text-center"
+                >💸 Pay with Swish ({amountSEK} SEK)</a>
+              )}
+              {!swishUrl && recipient === undefined && (
+                <p className="text-xs text-stone-400 text-center mb-2">No Swish number found for {settleTarget.to}. Ask them to register.</p>
+              )}
+              <button onClick={() => handleSettle(settleTarget)} className="w-full py-3.5 rounded-2xl bg-emerald-500 text-white text-sm font-semibold cursor-pointer hover:bg-emerald-600 transition-colors">
+                {swishUrl ? "Mark as paid (after Swish)" : "Confirm payment"}
+              </button>
+              <button onClick={() => setSettleTarget(null)} className="w-full py-2.5 mt-2 text-sm text-stone-400 cursor-pointer">Cancel</button>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Settings sheet */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setShowSettings(false)}>
           <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold mb-1">Settle up</h3>
-            <p className="text-sm text-stone-500 mb-4">{settleTarget.from} pays {settleTarget.to}</p>
-            <div className="text-3xl font-bold text-center py-4 tabular-nums">{settleTarget.amount} CZK</div>
-            <button onClick={() => handleSettle(settleTarget)} className="w-full py-3.5 rounded-2xl bg-emerald-500 text-white text-sm font-semibold cursor-pointer hover:bg-emerald-600 transition-colors">Confirm payment</button>
-            <button onClick={() => setSettleTarget(null)} className="w-full py-2.5 mt-2 text-sm text-stone-400 cursor-pointer">Cancel</button>
+            <h3 className="text-lg font-bold mb-4">Settings</h3>
+
+            {/* My info */}
+            <div className="p-3 rounded-2xl bg-stone-50 mb-4">
+              <p className="text-xs text-stone-400 mb-0.5">Logged in as</p>
+              <p className="text-sm font-semibold">{myName}</p>
+              <p className="text-xs text-stone-500">{myPhone}</p>
+            </div>
+
+            {/* Environment switcher */}
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Environment</p>
+              <div className="flex gap-2">
+                <button onClick={() => onSwitchEnv("prod")}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors ${env === "prod" ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-500"}`}>
+                  🚀 Production
+                </button>
+                <button onClick={() => onSwitchEnv("test")}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors ${env === "test" ? "bg-amber-500 text-white" : "bg-stone-100 text-stone-500"}`}>
+                  🧪 Test
+                </button>
+              </div>
+              <p className="text-xs text-stone-400 mt-1.5">
+                {env === "test"
+                  ? "Test data is isolated from prod. You can reset it anytime."
+                  : "Real data. Be careful."}
+              </p>
+            </div>
+
+            {/* Test reset (only shown in test mode) */}
+            {env === "test" && (
+              <button onClick={handleReset} disabled={resetting}
+                className="w-full py-3 rounded-2xl bg-red-50 text-red-700 border-2 border-red-200 text-sm font-semibold cursor-pointer hover:bg-red-100 transition-colors mb-2 disabled:opacity-40">
+                {resetting ? "Resetting…" : "🗑 Reset ALL test data"}
+              </button>
+            )}
+
+            {/* Logout */}
+            <button onClick={onLogout}
+              className="w-full py-2.5 rounded-2xl bg-stone-100 text-stone-700 text-sm font-medium cursor-pointer hover:bg-stone-200 transition-colors mb-2">
+              Logout (keep data)
+            </button>
+
+            {/* Delete account */}
+            <button onClick={handleDeleteAccount}
+              className="w-full py-2.5 rounded-2xl text-red-500 text-sm font-medium cursor-pointer hover:bg-red-50 transition-colors mb-2">
+              Delete my account
+            </button>
+
+            <button onClick={() => setShowSettings(false)} className="w-full py-2 text-sm text-stone-400 cursor-pointer">Close</button>
           </div>
         </div>
       )}
@@ -487,26 +743,39 @@ function SplitApp({ myName, onChangeName }: { myName: string; onChangeName: () =
       {showMembers && (
         <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setShowMembers(false)}>
           <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold mb-3">Group members</h3>
+            <h3 className="text-lg font-bold mb-1">Group members</h3>
+            <p className="text-xs text-stone-400 mb-3">Registered users (📱) can receive Swish payments</p>
             <div className="space-y-2 mb-4">
-              {members.map(m => (
-                <div key={m} className="flex items-center gap-3 py-2">
-                  <div className="w-9 h-9 rounded-full bg-stone-100 flex items-center justify-center text-sm font-bold">{m[0]}</div>
-                  <span className="text-sm font-medium flex-1">{m}{m === myName ? " (you)" : ""}</span>
-                  {m !== myName && (
-                    <button onClick={() => saveMembers(members.filter(x => x !== m))} className="text-xs text-red-400 cursor-pointer">Remove</button>
-                  )}
-                </div>
-              ))}
+              {members.map(m => {
+                const registered = registeredUsers.find(u => u.name === m);
+                return (
+                  <div key={m} className="flex items-center gap-3 py-2">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white"
+                      style={{ backgroundColor: registered?.color || "#a8a29e" }}>
+                      {m[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium flex items-center gap-1.5">
+                        {m}{m === myName ? " (you)" : ""}
+                        {registered && <span className="text-[0.6rem]">📱</span>}
+                      </div>
+                      {registered && <div className="text-[0.65rem] text-stone-400">{registered.phone}</div>}
+                    </div>
+                    {m !== myName && !registered && (
+                      <button onClick={() => removeLocalMember(m)} className="text-xs text-red-400 cursor-pointer">Remove</button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
             <div className="flex gap-2">
-              <input type="text" value={newMember} onChange={e => setNewMember(e.target.value)} placeholder="Add person…"
+              <input type="text" value={newMember} onChange={e => setNewMember(e.target.value)} placeholder="Add person (name only)…"
                 onKeyDown={e => e.key === "Enter" && addMember()}
                 className="flex-1 px-4 py-2.5 rounded-2xl bg-stone-50 text-sm outline-none border-2 border-transparent focus:border-stone-900" />
               <button onClick={addMember} disabled={!newMember.trim()} className="px-4 py-2.5 rounded-2xl bg-stone-900 text-white text-sm font-semibold cursor-pointer disabled:opacity-30">Add</button>
             </div>
-            <button onClick={onChangeName} className="w-full mt-4 py-2 text-xs text-stone-400 cursor-pointer">Change my name</button>
-            <button onClick={() => setShowMembers(false)} className="w-full py-2 text-sm text-stone-400 cursor-pointer">Close</button>
+            <p className="text-[0.65rem] text-stone-400 mt-2">Ask them to register via this link to enable Swish.</p>
+            <button onClick={() => setShowMembers(false)} className="w-full py-2 mt-4 text-sm text-stone-400 cursor-pointer">Close</button>
           </div>
         </div>
       )}
