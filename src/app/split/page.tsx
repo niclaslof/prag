@@ -119,14 +119,14 @@ function SetupScreen({ env, onDone, pendingGroupId }: { env: Env; onDone: (name:
       <div className="w-full max-w-sm">
         {invitingGroup ? (
           <div className="text-center">
-            <div className="text-6xl mb-6">{invitingGroup.emoji}</div>
-            <p className="text-xs text-stone-400 uppercase tracking-[0.2em] mb-2">You were invited to</p>
+            <div className="text-5xl mb-6 font-display">{invitingGroup.emoji}</div>
+            <p className="text-caption mb-2">You were invited to</p>
             <h1 className="text-2xl font-bold mb-2">{invitingGroup.name}</h1>
             <p className="text-stone-500 text-sm mb-8">{invitingGroup.memberCount} {invitingGroup.memberCount === 1 ? "member" : "members"} · Register to join</p>
           </div>
         ) : (
           <div className="text-center">
-            <div className="text-6xl mb-6">💸</div>
+            <div className="font-display text-5xl font-semibold mb-4 tracking-tight">W<span style={{ color: "#c96442" }}>//</span>S</div>
             <h1 className="text-2xl font-bold mb-2">Walli Split</h1>
             <p className="text-stone-500 text-sm mb-8">
               {existingUsers.length > 0
@@ -137,7 +137,7 @@ function SetupScreen({ env, onDone, pendingGroupId }: { env: Env; onDone: (name:
         )}
         {env === "test" && (
           <div className="mb-4 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-center">
-            <p className="text-[0.65rem] font-bold text-amber-800 uppercase tracking-wider">🧪 Test mode</p>
+            <p className="text-[0.65rem] font-bold text-amber-800 uppercase tracking-wider">TEST MODE</p>
             <p className="text-[0.65rem] text-amber-700 mt-0.5">Data can be reset anytime</p>
           </div>
         )}
@@ -387,7 +387,7 @@ function SplitApp({
       }
       saveLocalMembers([...localMembers]);
       fetchData();
-      setImportStatus(`✅ Added ${added.length} contacts`);
+      setImportStatus(`✓ Added ${added.length} contacts`);
       setTimeout(() => setImportStatus(""), 3000);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -476,7 +476,7 @@ function SplitApp({
       if (res.ok) {
         setQuickAddName(""); setQuickAddPhone("");
         fetchData();
-        setToast("✅ Added with Swish");
+        setToast("✓ Added with Swish");
         setTimeout(() => setToast(""), 2000);
       }
     } catch { /* ok */ }
@@ -598,7 +598,7 @@ function SplitApp({
         body: JSON.stringify({ from: b.from, to: b.to, amount: b.amount, currency: "CZK", method: "Swish" }),
       });
       setSettleTarget(null);
-      setToast(`✅ ${b.from} → ${b.to}: ${b.amount} CZK settled`);
+      setToast(`✓ ${b.from} → ${b.to}: ${b.amount} CZK settled`);
       fetchData();
       setTimeout(() => setToast(""), 3000);
     } catch { /* ok */ }
@@ -647,7 +647,7 @@ function SplitApp({
       {/* Test mode banner */}
       {env === "test" && (
         <div className="sticky top-0 z-50 bg-amber-100 border-b-2 border-amber-300 px-4 py-1.5 flex items-center justify-between">
-          <span className="text-[0.65rem] font-bold text-amber-900 uppercase tracking-wider">🧪 Test mode</span>
+          <span className="text-[0.65rem] font-bold text-amber-900 uppercase tracking-wider">TEST MODE</span>
           <button onClick={() => onSwitchEnv("prod")} className="text-[0.65rem] font-semibold text-amber-900 underline cursor-pointer">Switch to PROD</button>
         </div>
       )}
@@ -750,7 +750,7 @@ function SplitApp({
             </div>
             {expenses.length === 0 && (
               <div className="text-center py-10">
-                <p className="text-4xl mb-3">🧾</p>
+                <div className="font-display text-4xl font-semibold mb-3 text-stone-300">—</div>
                 <p className="text-sm font-medium text-stone-600 mb-1">No expenses yet</p>
                 <p className="text-xs text-stone-400">Tap + to add your first one</p>
               </div>
@@ -861,7 +861,7 @@ function SplitApp({
               </button>
               <button onClick={() => setSplitMode("items")}
                 className={`flex-1 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-colors ${splitMode === "items" ? "bg-white shadow-sm text-stone-900" : "text-stone-500"}`}>
-                🧾 By item
+                By item
               </button>
             </div>
 
@@ -1119,7 +1119,7 @@ function SplitApp({
               {swishUrl && (
                 <a href={swishUrl} target="_blank" rel="noopener noreferrer"
                   className="block w-full py-3.5 mb-2 rounded-2xl bg-purple-600 text-white text-sm font-semibold cursor-pointer hover:bg-purple-700 transition-colors text-center"
-                >💸 Pay with Swish ({amountSEK} SEK)</a>
+                >Pay with Swish ({amountSEK} SEK)</a>
               )}
               {!swishUrl && recipient === undefined && (
                 <p className="text-xs text-stone-400 text-center mb-2">No Swish number found for {settleTarget.to}. Ask them to register.</p>
@@ -1152,11 +1152,11 @@ function SplitApp({
               <div className="flex gap-2">
                 <button onClick={() => onSwitchEnv("prod")}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors ${env === "prod" ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-500"}`}>
-                  🚀 Production
+                  PROD
                 </button>
                 <button onClick={() => onSwitchEnv("test")}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-colors ${env === "test" ? "bg-amber-500 text-white" : "bg-stone-100 text-stone-500"}`}>
-                  🧪 Test
+                  TEST
                 </button>
               </div>
               <p className="text-xs text-stone-400 mt-1.5">
@@ -1170,7 +1170,7 @@ function SplitApp({
             {env === "test" && (
               <button onClick={handleReset} disabled={resetting}
                 className="w-full py-3 rounded-2xl bg-red-50 text-red-700 border-2 border-red-200 text-sm font-semibold cursor-pointer hover:bg-red-100 transition-colors mb-2 disabled:opacity-40">
-                {resetting ? "Resetting…" : "🗑 Reset ALL test data"}
+                {resetting ? "Resetting…" : "Reset all test data"}
               </button>
             )}
 
@@ -1189,10 +1189,10 @@ function SplitApp({
                     onClick={() => {
                       const url = window.location.origin + "/split";
                       if (navigator.share) navigator.share({ title: "Walli Split", url });
-                      else { navigator.clipboard.writeText(url); setToast("✅ Link copied"); setTimeout(() => setToast(""), 2000); }
+                      else { navigator.clipboard.writeText(url); setToast("✓ Link copied"); setTimeout(() => setToast(""), 2000); }
                     }}
                     className="w-full py-2 rounded-xl bg-stone-900 text-white text-xs font-semibold cursor-pointer hover:bg-stone-800 transition-colors"
-                  >📤 Share link</button>
+                  >Share invite</button>
                 </div>
               </div>
             </div>
@@ -1225,7 +1225,7 @@ function SplitApp({
             {!groups.some(g => g.id === "walliprag") && (
               <button onClick={() => selectGroup("walliprag")}
                 className={`w-full flex items-center gap-3 p-3 rounded-2xl mb-2 transition-colors cursor-pointer ${currentGroupId === "walliprag" ? "bg-stone-100 ring-2 ring-stone-900" : "bg-stone-50 hover:bg-stone-100"}`}>
-                <span className="text-2xl">🧳</span>
+                <span className="text-2xl"></span>
                 <div className="flex-1 text-left">
                   <div className="text-sm font-semibold">Walli Prag (default)</div>
                   <div className="text-[0.65rem] text-stone-400">Main trip group</div>
@@ -1248,11 +1248,11 @@ function SplitApp({
                 <button onClick={() => {
                   const url = `${window.location.origin}/split?join=${encodeURIComponent(g.id)}${env === "test" ? "&env=test" : ""}`;
                   if (navigator.share) navigator.share({ title: `Join ${g.name}`, text: `Join "${g.name}" on Walli Split:`, url });
-                  else { navigator.clipboard.writeText(url); setToast("✅ Invite link copied"); setTimeout(() => setToast(""), 2000); }
+                  else { navigator.clipboard.writeText(url); setToast("✓ Invite link copied"); setTimeout(() => setToast(""), 2000); }
                 }}
                   className="p-3 text-stone-400 hover:text-stone-900 cursor-pointer"
                   title="Share invite link"
-                >📤</button>
+                >↗</button>
               </div>
             ))}
 
@@ -1281,7 +1281,7 @@ function SplitApp({
         <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setShowMembers(false)}>
           <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-1">Group members</h3>
-            <p className="text-xs text-stone-400 mb-3">Registered users (📱) can receive Swish payments</p>
+            <p className="text-xs text-stone-400 mb-3">Registered users () can receive Swish payments</p>
             <div className="space-y-2 mb-4">
               {members.map(m => {
                 const registered = registeredUsers.find(u => u.name === m);
@@ -1294,7 +1294,7 @@ function SplitApp({
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium flex items-center gap-1.5">
                         {m}{m === myName ? " (you)" : ""}
-                        {registered && <span className="text-[0.6rem]">📱</span>}
+                        {registered && <span className="text-[0.6rem]"></span>}
                       </div>
                       {registered && <div className="text-[0.65rem] text-stone-400">{registered.phone}</div>}
                     </div>
