@@ -674,9 +674,15 @@ function SplitApp({
             </p>
           </button>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowMembers(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm cursor-pointer hover:bg-stone-200 transition-colors" title="Group">👥</button>
-            <button onClick={() => setShowSettings(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-sm cursor-pointer hover:bg-stone-200 transition-colors" title="Settings">⚙</button>
-            <a href="/" className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-xs cursor-pointer hover:bg-stone-200 transition-colors" title="Back to map">🗺</a>
+            <button onClick={() => setShowMembers(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-600 cursor-pointer hover:bg-stone-200 transition-colors" title="Group">
+              <UsersIcon size={15} strokeWidth={1.5} />
+            </button>
+            <button onClick={() => setShowSettings(true)} className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-600 cursor-pointer hover:bg-stone-200 transition-colors" title="Settings">
+              <SettingsIcon size={15} strokeWidth={1.5} />
+            </button>
+            <a href="/" className="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-600 cursor-pointer hover:bg-stone-200 transition-colors" title="Back to map">
+              <MapIcon size={15} strokeWidth={1.5} />
+            </a>
           </div>
         </div>
       </header>
@@ -992,11 +998,11 @@ function SplitApp({
               const csv = "Date,Description,Amount,Currency,PaidBy,Category\n" + expenses.map(e => `${e.date},"${e.description}",${e.amount},${e.currency},${e.paidBy},${e.category}`).join("\n");
               const blob = new Blob([csv], { type: "text/csv" }); const url = URL.createObjectURL(blob);
               const a = document.createElement("a"); a.href = url; a.download = "walli-split.csv"; a.click();
-            }} className="flex-1 py-2.5 rounded-2xl bg-stone-100 text-sm font-medium text-stone-600 cursor-pointer hover:bg-stone-200 transition-colors">📊 Export CSV</button>
+            }} className="flex-1 py-2.5 rounded-2xl bg-stone-100 text-sm font-medium text-stone-600 cursor-pointer hover:bg-stone-200 transition-colors flex items-center justify-center gap-2"><BarChart3 size={14} strokeWidth={1.5} />Export CSV</button>
             <button onClick={() => {
-              const t = `💸 Walli Split\n💰 ${stats.totalCZK.toLocaleString()} CZK (~${stats.totalSEK.toLocaleString()} SEK)\n👥 ${stats.people.length} people · ${stats.expenseCount} expenses`;
+              const t = `Walli Split\n${stats.totalCZK.toLocaleString()} CZK (~${stats.totalSEK.toLocaleString()} SEK)\n${stats.people.length} people · ${stats.expenseCount} expenses`;
               navigator.share ? navigator.share({ text: t }) : navigator.clipboard.writeText(t);
-            }} className="flex-1 py-2.5 rounded-2xl bg-stone-100 text-sm font-medium text-stone-600 cursor-pointer hover:bg-stone-200 transition-colors">📤 Share</button>
+            }} className="flex-1 py-2.5 rounded-2xl bg-stone-100 text-sm font-medium text-stone-600 cursor-pointer hover:bg-stone-200 transition-colors flex items-center justify-center gap-2"><Share2 size={14} strokeWidth={1.5} />Share</button>
           </div>
         </div>
       )}
@@ -1325,23 +1331,29 @@ function SplitApp({
         </div>
       )}
 
-      {/* Bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-stone-100 max-w-lg mx-auto" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+      {/* Bottom nav — typographic with Lucide pictograms */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md hairline-t max-w-lg mx-auto" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
         <div className="flex items-stretch">
-          <button onClick={() => setView("home")} className={`flex-1 py-3 flex flex-col items-center gap-0.5 cursor-pointer ${view === "home" ? "text-stone-900" : "text-stone-300"}`}>
-            <span className="text-lg">🏠</span><span className="text-[0.55rem] font-semibold">Home</span>
+          <button onClick={() => setView("home")} className={`flex-1 py-3 flex flex-col items-center gap-1 cursor-pointer transition-colors ${view === "home" ? "text-[#1a1715]" : "text-[#6b665e]/50"}`}>
+            <HomeIcon size={18} strokeWidth={1.5} />
+            <span className="text-[9px] font-semibold tracking-[0.12em] uppercase">Home</span>
           </button>
-          <button onClick={() => setView("balances")} className={`flex-1 py-3 flex flex-col items-center gap-0.5 cursor-pointer ${view === "balances" ? "text-stone-900" : "text-stone-300"}`}>
-            <span className="text-lg">📊</span><span className="text-[0.55rem] font-semibold">Stats</span>
+          <button onClick={() => setView("balances")} className={`flex-1 py-3 flex flex-col items-center gap-1 cursor-pointer transition-colors ${view === "balances" ? "text-[#1a1715]" : "text-[#6b665e]/50"}`}>
+            <BarChart3 size={18} strokeWidth={1.5} />
+            <span className="text-[9px] font-semibold tracking-[0.12em] uppercase">Stats</span>
           </button>
           <button onClick={() => setView("add")} className="flex-1 py-2 flex items-center justify-center cursor-pointer">
-            <span className="w-12 h-12 rounded-full bg-stone-900 text-white text-2xl flex items-center justify-center shadow-lg -mt-5">+</span>
+            <span className="w-12 h-12 rounded-full bg-[#c96442] text-white flex items-center justify-center shadow-[0_4px_14px_rgba(201,100,66,0.4)] -mt-5 hover:bg-[#a84f31] transition-colors">
+              <Plus size={22} strokeWidth={2} />
+            </span>
           </button>
-          <button onClick={() => setView("activity")} className={`flex-1 py-3 flex flex-col items-center gap-0.5 cursor-pointer ${view === "activity" ? "text-stone-900" : "text-stone-300"}`}>
-            <span className="text-lg">🔔</span><span className="text-[0.55rem] font-semibold">Feed</span>
+          <button onClick={() => setView("activity")} className={`flex-1 py-3 flex flex-col items-center gap-1 cursor-pointer transition-colors ${view === "activity" ? "text-[#1a1715]" : "text-[#6b665e]/50"}`}>
+            <ActivityIcon size={18} strokeWidth={1.5} />
+            <span className="text-[9px] font-semibold tracking-[0.12em] uppercase">Activity</span>
           </button>
-          <button onClick={() => setShowMembers(true)} className="flex-1 py-3 flex flex-col items-center gap-0.5 cursor-pointer text-stone-300">
-            <span className="text-lg">👥</span><span className="text-[0.55rem] font-semibold">Group</span>
+          <button onClick={() => setShowMembers(true)} className="flex-1 py-3 flex flex-col items-center gap-1 cursor-pointer text-[#6b665e]/50 hover:text-[#1a1715] transition-colors">
+            <UsersIcon size={18} strokeWidth={1.5} />
+            <span className="text-[9px] font-semibold tracking-[0.12em] uppercase">Group</span>
           </button>
         </div>
       </nav>
