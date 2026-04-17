@@ -58,19 +58,27 @@ const PRESETS = [
 function catEmoji(id: string) { return CATS.find(c => c.id === id)?.emoji || "💰"; }
 
 // --- Setup screen (enter name + phone, shown once) ---
-function SetupScreen({ env, onDone }: { env: Env; onDone: (name: string, phone: string) => void }) {
+function SetupScreen({ env, onDone, pendingGroupId }: { env: Env; onDone: (name: string, phone: string) => void; pendingGroupId: string | null }) {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [existingUsers, setExistingUsers] = useState<{ name: string; color: string }[]>([]);
+  const [invitingGroup, setInvitingGroup] = useState<{ name: string; emoji: string; memberCount: number } | null>(null);
 
-  // Fetch existing users to show "Join X and 3 others" welcome
+  // Fetch existing users + group info if invited
   useEffect(() => {
     fetch(apiUrl("/api/users", env)).then(r => r.ok ? r.json() : null).then(d => {
       if (d?.users?.length) setExistingUsers(d.users);
     }).catch(() => {});
-  }, [env]);
+
+    if (pendingGroupId) {
+      fetch(apiUrl("/api/groups", env)).then(r => r.ok ? r.json() : null).then(d => {
+        const g = d?.groups?.find((x: Group) => x.id === pendingGroupId);
+        if (g) setInvitingGroup({ name: g.name, emoji: g.emoji, memberCount: g.memberPhones.length });
+      }).catch(() => {});
+    }
+  }, [env, pendingGroupId]);
 
   const canSubmit = name.trim().length >= 2 && phone.replace(/[^\d+]/g, "").length >= 6;
 
@@ -98,11 +106,24 @@ function SetupScreen({ env, onDone }: { env: Env; onDone: (name: string, phone: 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
-        <div className="text-center">
-          <div className="text-6xl mb-6">💸</div>
-          <h1 className="text-2xl font-bold mb-2">Walli Split</h1>
-          <p className="text-stone-500 text-sm mb-8">Split expenses with your travel group</p>
-        </div>
+        {invitingGroup ? (
+          <div className="text-center">
+            <div className="text-6xl mb-6">{invitingGroup.emoji}</div>
+            <p className="text-xs text-stone-400 uppercase tracking-[0.2em] mb-2">You were invited to</p>
+            <h1 className="text-2xl font-bold mb-2">{invitingGroup.name}</h1>
+            <p className="text-stone-500 text-sm mb-8">{invitingGroup.memberCount} {invitingGroup.memberCount === 1 ? "member" : "members"} · Register to join</p>
+          </div>
+        ) : (
+          <div className="text-center">
+            <div className="text-6xl mb-6">💸</div>
+            <h1 className="text-2xl font-bold mb-2">Walli Split</h1>
+            <p className="text-stone-500 text-sm mb-8">
+              {existingUsers.length > 0
+                ? `Join ${existingUsers.length} ${existingUsers.length === 1 ? "person" : "people"} already tracking expenses`
+                : "Split expenses with your travel group"}
+            </p>
+          </div>
+        )}
         {env === "test" && (
           <div className="mb-4 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-center">
             <p className="text-[0.65rem] font-bold text-amber-800 uppercase tracking-wider">🧪 Test mode</p>
@@ -146,6 +167,8 @@ export default function SplitPage() {
   const [myPhone, setMyPhone] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
+  const [pendingJoinGroupId, setPendingJoinGroupId] = useState<string | null>(null);
+
   useEffect(() => {
     const e = getEnv();
     setEnv(e);
@@ -154,14 +177,48 @@ export default function SplitPage() {
     const savedPhone = localStorage.getItem(storageKey(e, "phone"));
     if (savedName) setMyName(savedName);
     if (savedPhone) setMyPhone(savedPhone);
+
+    // Check URL for ?join=<groupId>
+    const params = new URLSearchParams(window.location.search);
+    const joinId = params.get("join");
+    if (joinId) {
+      setPendingJoinGroupId(joinId);
+      // If already logged in, join immediately
+      if (savedPhone) {
+        fetch(apiUrl("/api/groups", e), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ groupId: joinId, phone: savedPhone }),
+        }).then(() => {
+          localStorage.setItem(storageKey(e, "groupId"), joinId);
+          // Clean URL
+          window.history.replaceState(null, "", window.location.pathname);
+        }).catch(() => {});
+      }
+    }
+
     setLoaded(true);
   }, []);
 
-  const handleSetup = (name: string, phone: string) => {
+  const handleSetup = async (name: string, phone: string) => {
     localStorage.setItem(storageKey(env, "name"), name);
     localStorage.setItem(storageKey(env, "phone"), phone);
     setMyName(name);
     setMyPhone(phone);
+
+    // If they arrived via invite link, auto-join the group
+    if (pendingJoinGroupId) {
+      try {
+        await fetch(apiUrl("/api/groups", env), {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ groupId: pendingJoinGroupId, phone }),
+        });
+        localStorage.setItem(storageKey(env, "groupId"), pendingJoinGroupId);
+        window.history.replaceState(null, "", window.location.pathname);
+      } catch { /* ok */ }
+      setPendingJoinGroupId(null);
+    }
   };
 
   const handleLogout = () => {
@@ -179,7 +236,7 @@ export default function SplitPage() {
   };
 
   if (!loaded) return null;
-  if (!myName || !myPhone) return <SetupScreen env={env} onDone={handleSetup} />;
+  if (!myName || !myPhone) return <SetupScreen env={env} onDone={handleSetup} pendingGroupId={pendingJoinGroupId} />;
   return (
     <SplitApp
       env={env}
@@ -839,15 +896,25 @@ function SplitApp({
             )}
 
             {groups.map(g => (
-              <button key={g.id} onClick={() => selectGroup(g.id)}
-                className={`w-full flex items-center gap-3 p-3 rounded-2xl mb-2 transition-colors cursor-pointer ${currentGroupId === g.id ? "bg-stone-100 ring-2 ring-stone-900" : "bg-stone-50 hover:bg-stone-100"}`}>
-                <span className="text-2xl">{g.emoji}</span>
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-semibold">{g.name}</div>
-                  <div className="text-[0.65rem] text-stone-400">{g.memberPhones.length} member{g.memberPhones.length === 1 ? "" : "s"}</div>
-                </div>
-                {currentGroupId === g.id && <span className="text-stone-900">✓</span>}
-              </button>
+              <div key={g.id} className={`flex items-center gap-1 mb-2 rounded-2xl ${currentGroupId === g.id ? "bg-stone-100 ring-2 ring-stone-900" : "bg-stone-50 hover:bg-stone-100"}`}>
+                <button onClick={() => selectGroup(g.id)}
+                  className="flex-1 flex items-center gap-3 p-3 transition-colors cursor-pointer text-left">
+                  <span className="text-2xl">{g.emoji}</span>
+                  <div className="flex-1">
+                    <div className="text-sm font-semibold">{g.name}</div>
+                    <div className="text-[0.65rem] text-stone-400">{g.memberPhones.length} member{g.memberPhones.length === 1 ? "" : "s"}</div>
+                  </div>
+                  {currentGroupId === g.id && <span className="text-stone-900">✓</span>}
+                </button>
+                <button onClick={() => {
+                  const url = `${window.location.origin}/split?join=${encodeURIComponent(g.id)}${env === "test" ? "&env=test" : ""}`;
+                  if (navigator.share) navigator.share({ title: `Join ${g.name}`, text: `Join "${g.name}" on Walli Split:`, url });
+                  else { navigator.clipboard.writeText(url); setToast("✅ Invite link copied"); setTimeout(() => setToast(""), 2000); }
+                }}
+                  className="p-3 text-stone-400 hover:text-stone-900 cursor-pointer"
+                  title="Share invite link"
+                >📤</button>
+              </div>
             ))}
 
             {/* Create new group */}
