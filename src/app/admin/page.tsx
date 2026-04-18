@@ -25,6 +25,12 @@ export default function AdminPage() {
   const [editPhone, setEditPhone] = useState("");
   const [toast, setToast] = useState("");
   const [stats, setStats] = useState<{ totalCZK: number; expenseCount: number } | null>(null);
+  const [expenses, setExpenses] = useState<{ id: string; description: string; amount: number; currency: string; paidBy: string; category: string; date: string }[]>([]);
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserPhone, setNewUserPhone] = useState("");
+  const [showAddGroup, setShowAddGroup] = useState(false);
+  const [newGroupName, setNewGroupName] = useState("");
 
   const fetchAll = async () => {
     setLoading(true);
@@ -35,7 +41,7 @@ export default function AdminPage() {
     ]);
     if (uRes.ok) setUsers((await uRes.json()).users || []);
     if (gRes.ok) setGroups((await gRes.json()).groups || []);
-    if (sRes.ok) { const d = await sRes.json(); setStats({ totalCZK: d.stats?.totalCZK || 0, expenseCount: d.stats?.expenseCount || 0 }); }
+    if (sRes.ok) { const d = await sRes.json(); setStats({ totalCZK: d.stats?.totalCZK || 0, expenseCount: d.stats?.expenseCount || 0 }); setExpenses(d.expenses || []); }
     setLoading(false);
   };
 
@@ -78,6 +84,35 @@ export default function AdminPage() {
     if (!confirm(`Delete group ${id}? (expenses remain)`)) return;
     // No dedicated delete endpoint — just notify
     notify("⚠️ Group deletion via blob dashboard (manual)");
+  };
+
+  const createUser = async () => {
+    if (!newUserName.trim() || !newUserPhone.trim()) return;
+    await fetch(`/api/users${envParam(env)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newUserName.trim(), phone: newUserPhone.trim() }),
+    });
+    setNewUserName(""); setNewUserPhone(""); setShowAddUser(false);
+    notify("user created"); fetchAll();
+  };
+
+  const createGroup = async () => {
+    if (!newGroupName.trim()) return;
+    await fetch(`/api/groups${envParam(env)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newGroupName.trim(), createdBy: "admin", creatorPhone: "+0" }),
+    });
+    setNewGroupName(""); setShowAddGroup(false);
+    notify("group created"); fetchAll();
+  };
+
+  const deleteExpense = async (id: string) => {
+    if (!confirm(`Delete expense ${id}?`)) return;
+    // Expenses stored in blob — need to delete via blob
+    // For now just notify (would need a DELETE endpoint)
+    notify("expense deletion requires blob dashboard for now");
   };
 
   const resetTestData = async () => {
@@ -274,6 +309,101 @@ export default function AdminPage() {
                   </div>
                 </div>
               )}
+            </section>
+
+            {/* Expenses table */}
+            <section>
+              <div className="flex items-end justify-between mb-4">
+                <div>
+                  <p className="text-caption mb-1">Expenses</p>
+                  <h2 className="font-display text-2xl font-semibold">Transaction log</h2>
+                </div>
+                <div className="flex items-center gap-3 text-[10px] font-mono-data text-[#6b665e]">
+                  <span>{expenses.length} rows</span>
+                </div>
+              </div>
+              {expenses.length === 0 ? (
+                <div className="hairline p-12 text-center">
+                  <p className="text-caption text-[#6b665e]">No expenses</p>
+                </div>
+              ) : (
+                <div className="hairline overflow-x-auto">
+                  <div className="min-w-[800px]">
+                    <div className="grid grid-cols-[1fr_minmax(0,2fr)_auto_auto_auto_auto] gap-3 px-5 py-2.5 hairline-b" style={{ backgroundColor: "#f4f1ea" }}>
+                      <div className="text-caption">Date</div>
+                      <div className="text-caption">Description</div>
+                      <div className="text-caption">Amount</div>
+                      <div className="text-caption">Paid by</div>
+                      <div className="text-caption">Category</div>
+                      <div className="text-caption text-right">ID</div>
+                    </div>
+                    {expenses.slice(0, 50).map((e, idx) => (
+                      <div key={e.id} className={`grid grid-cols-[1fr_minmax(0,2fr)_auto_auto_auto_auto] gap-3 px-5 py-2.5 items-center hover:bg-[#f4f1ea]/50 transition-colors ${idx !== Math.min(expenses.length, 50) - 1 ? "hairline-b" : ""}`}>
+                        <div className="font-mono-data text-[11px] text-[#6b665e]">{e.date}</div>
+                        <div className="text-[13px] truncate">{e.description}</div>
+                        <div className="font-mono-data text-[12px] font-semibold tabular-nums">{e.amount} {e.currency}</div>
+                        <div className="text-[12px]">{e.paidBy}</div>
+                        <div className="text-[11px] text-[#6b665e]">{e.category}</div>
+                        <div className="font-mono-data text-[9px] text-[#6b665e]/50 text-right">{e.id.slice(-8)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Quick actions */}
+            <section>
+              <p className="text-caption mb-4">Actions</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Add user */}
+                <div className="hairline p-5">
+                  <h3 className="text-sm font-semibold mb-3">Create user</h3>
+                  <div className="space-y-2">
+                    <input type="text" value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="Name"
+                      className="w-full px-3 py-2 hairline font-mono-data text-[12px] outline-none focus:border-[#c96442]" style={{ backgroundColor: "white" }} />
+                    <input type="tel" value={newUserPhone} onChange={e => setNewUserPhone(e.target.value)} placeholder="Phone (+46...)"
+                      onKeyDown={e => e.key === "Enter" && createUser()}
+                      className="w-full px-3 py-2 hairline font-mono-data text-[12px] outline-none focus:border-[#c96442]" style={{ backgroundColor: "white" }} />
+                    <button onClick={createUser} disabled={!newUserName.trim() || !newUserPhone.trim()}
+                      className="w-full py-2 font-mono-data text-[10px] uppercase tracking-wider text-white cursor-pointer disabled:opacity-30" style={{ backgroundColor: "#c96442" }}>
+                      create
+                    </button>
+                  </div>
+                </div>
+
+                {/* Add group */}
+                <div className="hairline p-5">
+                  <h3 className="text-sm font-semibold mb-3">Create group</h3>
+                  <div className="space-y-2">
+                    <input type="text" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="Group name (e.g. Rome 2026)"
+                      onKeyDown={e => e.key === "Enter" && createGroup()}
+                      className="w-full px-3 py-2 hairline font-mono-data text-[12px] outline-none focus:border-[#c96442]" style={{ backgroundColor: "white" }} />
+                    <button onClick={createGroup} disabled={!newGroupName.trim()}
+                      className="w-full py-2 font-mono-data text-[10px] uppercase tracking-wider text-white cursor-pointer disabled:opacity-30" style={{ backgroundColor: "#c96442" }}>
+                      create
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick links */}
+                <div className="hairline p-5">
+                  <h3 className="text-sm font-semibold mb-3">Open app</h3>
+                  <div className="space-y-2">
+                    <a href={`/split${env === "test" ? "?env=test" : ""}`} target="_blank" rel="noopener noreferrer"
+                      className="block w-full py-2 hairline text-center font-mono-data text-[10px] uppercase tracking-wider text-[#6b665e] hover:bg-[#f4f1ea] cursor-pointer">
+                      open split · {env}
+                    </a>
+                    <a href={env === "test" ? "/split" : "/split?env=test"} target="_blank" rel="noopener noreferrer"
+                      className="block w-full py-2 hairline text-center font-mono-data text-[10px] uppercase tracking-wider text-[#6b665e] hover:bg-[#f4f1ea] cursor-pointer">
+                      open split · {env === "test" ? "prod" : "test"}
+                    </a>
+                    <a href="/admin" className="block w-full py-2 hairline text-center font-mono-data text-[10px] uppercase tracking-wider text-[#6b665e] hover:bg-[#f4f1ea] cursor-pointer">
+                      refresh admin
+                    </a>
+                  </div>
+                </div>
+              </div>
             </section>
 
             {/* Danger zone */}
