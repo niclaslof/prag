@@ -659,7 +659,7 @@ function SplitApp({
   }, 0);
 
   return (
-    <div className="max-w-lg mx-auto pb-24 relative">
+    <div className="max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto pb-24 relative">
       {/* Test mode banner */}
       {env === "test" && (
         <div className="sticky top-0 z-50 bg-amber-100 border-b-2 border-amber-300 px-4 py-1.5 flex items-center justify-between">
@@ -857,7 +857,7 @@ function SplitApp({
           {/* Presets */}
           <div>
             <p className="text-xs font-semibold text-stone-400 uppercase tracking-wider mb-2">Quick add</p>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
               {PRESETS.map(p => {
                 const Icon = p.Icon;
                 return (
@@ -1098,8 +1098,8 @@ function SplitApp({
 
       {/* Import contacts sheet (universal — works on ALL browsers) */}
       {showImportSheet && (
-        <div className="fixed inset-0 z-[60] bg-black/40 flex items-end justify-center" onClick={() => setShowImportSheet(false)}>
-          <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-[60] bg-black/40 flex items-end md:items-center justify-center" onClick={() => setShowImportSheet(false)}>
+          <div className="bg-white rounded-t-3xl md:rounded-2xl p-6 w-full max-w-lg md:max-w-xl md:mb-auto md:mt-auto max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-1">Import contacts</h3>
             <p className="text-xs text-stone-400 mb-4">Choose how to add people to the group</p>
 
@@ -1161,8 +1161,8 @@ function SplitApp({
           ? `https://app.swish.nu/1/p/sw/?sw=${recipient.phone.replace(/\D/g, "")}&amt=${amountSEK}&msg=${encodeURIComponent(`Walli Split`)}&src=qr`
           : null;
         return (
-          <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setSettleTarget(null)}>
-            <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+          <div className="fixed inset-0 z-50 bg-black/30 flex items-end md:items-center justify-center" onClick={() => setSettleTarget(null)}>
+            <div className="bg-white rounded-t-3xl md:rounded-2xl p-6 w-full max-w-lg md:max-w-xl md:mb-auto md:mt-auto max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <h3 className="text-lg font-bold mb-1">Settle up</h3>
               <p className="text-sm text-stone-500 mb-4">{settleTarget.from} pays {settleTarget.to}</p>
               <div className="text-center py-4">
@@ -1188,8 +1188,8 @@ function SplitApp({
 
       {/* Settings sheet */}
       {showSettings && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setShowSettings(false)}>
-          <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-end md:items-center justify-center" onClick={() => setShowSettings(false)}>
+          <div className="bg-white rounded-t-3xl md:rounded-2xl p-6 w-full max-w-lg md:max-w-xl md:mb-auto md:mt-auto max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">Settings</h3>
 
             {/* My info */}
@@ -1269,7 +1269,7 @@ function SplitApp({
 
       {/* Group switcher sheet */}
       {showGroupSwitcher && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setShowGroupSwitcher(false)}>
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-end md:items-center justify-center" onClick={() => setShowGroupSwitcher(false)}>
           <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg max-h-[80vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-3">Groups</h3>
             <p className="text-xs text-stone-400 mb-4">Switch between trips or projects. Each group has its own expenses.</p>
@@ -1331,8 +1331,8 @@ function SplitApp({
 
       {/* Members sheet */}
       {showMembers && (
-        <div className="fixed inset-0 z-50 bg-black/30 flex items-end justify-center" onClick={() => setShowMembers(false)}>
-          <div className="bg-white rounded-t-3xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 bg-black/30 flex items-end md:items-center justify-center" onClick={() => setShowMembers(false)}>
+          <div className="bg-white rounded-t-3xl md:rounded-2xl p-6 w-full max-w-lg md:max-w-xl md:mb-auto md:mt-auto max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-1">Group members</h3>
             <p className="text-xs text-stone-400 mb-3">Registered users () can receive Swish payments</p>
             <div className="space-y-2 mb-4">
@@ -1424,8 +1424,8 @@ function SplitApp({
       </div>
 
       {/* Bottom nav — typographic with Lucide pictograms */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md hairline-t max-w-lg mx-auto" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
-        <div className="flex items-stretch">
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md hairline-t" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
+        <div className="flex items-stretch max-w-lg md:max-w-2xl lg:max-w-4xl mx-auto">
           <button onClick={() => setView("home")} className={`flex-1 py-3 flex flex-col items-center gap-1 cursor-pointer transition-colors ${view === "home" ? "text-[#1a1715]" : "text-[#6b665e]/50"}`}>
             <HomeIcon size={18} strokeWidth={1.5} />
             <span className="text-[9px] font-semibold tracking-[0.12em] uppercase">Home</span>
